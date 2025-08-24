@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>컨퍼런스 관리자 대시보드</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <i class="fas fa-cog fa-spin"></i>
+            <p>관리자 인증 중...</p>
+        </div>
+    </div>
+
+    <!-- 로그인 화면 -->
+    <div id="loginScreen" class="login-screen" style="display: none;">
+        <div class="login-container">
+            <div class="login-header">
+                <i class="fas fa-shield-alt"></i>
+                <h2>관리자 로그인</h2>
+                <p>컨퍼런스 관리자 전용 페이지입니다</p>
+            </div>
+            
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="adminId">관리자 ID</label>
+                    <input type="text" id="adminId" name="adminId" required placeholder="관리자 ID를 입력하세요">
+                </div>
+                
+                <div class="form-group">
+                    <label for="adminPassword">비밀번호</label>
+                    <input type="password" id="adminPassword" name="adminPassword" required placeholder="비밀번호를 입력하세요">
+                </div>
+                
+                <button type="submit" class="btn-login">
+                    <i class="fas fa-sign-in-alt"></i>
+                    로그인
+                </button>
+                
+                <div class="login-demo-info">
+                    <p><small>데모용 계정: admin / admin123</small></p>
+                </div>
+            </form>
+            
+            <div class="login-footer">
+                <a href="index.html" class="back-link">
+                    <i class="fas fa-arrow-left"></i>
+                    초청장으로 돌아가기
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 관리자 대시보드 -->
+    <div id="adminDashboard" style="display: none;">
+        <header class="admin-header">
+            <div class="admin-nav">
+                <div class="admin-logo">
+                    <i class="fas fa-cogs"></i>
+                    <span>관리자 대시보드</span>
+                </div>
+                
+                <div class="admin-menu">
+                    <span class="admin-welcome">환영합니다, <span id="adminName">관리자</span>님</span>
+                    <button class="btn-admin-logout" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i>
+                        로그아웃
+                    </button>
+                </div>
+            </div>
+            
+            <div class="admin-quick-nav">
+                <button class="quick-nav-btn active" onclick="showSection('dashboard')">
+                    <i class="fas fa-tachometer-alt"></i>
+                    대시보드
+                </button>
+                <button class="quick-nav-btn" onclick="showSection('attendees')">
+                    <i class="fas fa-users"></i>
+                    참석자 관리
+                </button>
+                <button class="quick-nav-btn" onclick="showSection('guestbook')">
+                    <i class="fas fa-comments"></i>
+                    방명록 관리
+                </button>
+                <button class="quick-nav-btn" onclick="showSection('qr')">
+                    <i class="fas fa-qrcode"></i>
+                    QR 관리
+                </button>
+                <button class="quick-nav-btn" onclick="showSection('settings')">
+                    <i class="fas fa-cog"></i>
+                    설정
+                </button>
+                <a href="index.html" class="quick-nav-btn" style="text-decoration: none; color: inherit;">
+                    <i class="fas fa-eye"></i>
+                    사용자 페이지 보기
+                </a>
+            </div>
+        </header>
+
+        <main class="admin-main">
+            <!-- 통계 대시보드 섹션 -->
+            <section id="dashboardSection" class="admin-section active">
+                <div class="section-header">
+                    <h2><i class="fas fa-chart-bar"></i> 실시간 통계</h2>
+                    <div class="dashboard-controls">
+                        <button class="btn-toggle-realtime" onclick="toggleRealtimeMode()">
+                            <i class="fas fa-play"></i>
+                            실시간 모드 시작
+                        </button>
+                        <button class="btn-refresh" onclick="refreshAllStats()">
+                            <i class="fas fa-sync"></i>
+                            새로고침
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <!-- RSVP 통계 -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <h3><i class="fas fa-calendar-check"></i> RSVP 현황</h3>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-item">
+                                <span class="stat-label">총 응답</span>
+                                <span class="stat-value" id="totalRsvp">0</span>
+                            </div>
+                            <div class="stat-item success">
+                                <span class="stat-label">참석</span>
+                                <span class="stat-value" id="yesRsvp">0</span>
+                            </div>
+                            <div class="stat-item error">
+                                <span class="stat-label">불참</span>
+                                <span class="stat-value" id="noRsvp">0</span>
+                            </div>
+                            <div class="stat-item warning">
+                                <span class="stat-label">미정</span>
+                                <span class="stat-value" id="maybeRsvp">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 방명록 통계 -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <h3><i class="fas fa-comments"></i> 방명록 현황</h3>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-item">
+                                <span class="stat-label">총 메시지</span>
+                                <span class="stat-value" id="totalGuestbook">0</span>
+                            </div>
+                            <div class="stat-item info">
+                                <span class="stat-label">최근 메시지</span>
+                                <span class="stat-value" id="recentGuestbook">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- QR 코드 통계 -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <h3><i class="fas fa-qrcode"></i> QR 코드 현황</h3>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-item">
+                                <span class="stat-label">생성된 QR</span>
+                                <span class="stat-value" id="qrGenerated">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">사용된 QR</span>
+                                <span class="stat-value" id="qrUsed">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">사용률</span>
+                                <span class="stat-value" id="qrUsageRate">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 갤러리 통계 -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <h3><i class="fas fa-images"></i> 갤러리 현황</h3>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-item">
+                                <span class="stat-label">이미지 수</span>
+                                <span class="stat-value" id="totalImages">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 참석자 관리 섹션 -->
+            <section id="attendeesSection" class="admin-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-users"></i> 참석자 관리</h2>
+                    <div class="attendees-controls">
+                        <button class="btn-export" onclick="exportAttendees()">
+                            <i class="fas fa-download"></i>
+                            CSV 내보내기
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="attendees-list" id="attendeesList">
+                    <!-- 참석자 목록이 로드됨 -->
+                </div>
+            </section>
+
+            <!-- 방명록 관리 섹션 -->
+            <section id="guestbookSection" class="admin-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-comments"></i> 방명록 관리</h2>
+                    <div class="guestbook-controls">
+                        <button class="btn-refresh" onclick="refreshGuestbook()">
+                            <i class="fas fa-sync"></i>
+                            새로고침
+                        </button>
+                        <button class="btn-export" onclick="exportGuestbook()">
+                            <i class="fas fa-download"></i>
+                            내보내기
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="admin-guestbook-list" id="adminGuestbookList">
+                    <!-- 방명록 데이터가 로드됨 -->
+                </div>
+            </section>
+
+            <!-- QR 관리 섹션 -->
+            <section id="qrSection" class="admin-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-qrcode"></i> QR 코드 관리</h2>
+                </div>
+
+                <!-- QR 스캐너 -->
+                <div class="qr-scanner-section">
+                    <h3><i class="fas fa-camera"></i> QR 코드 스캐너</h3>
+                    <div class="scanner-container">
+                        <div class="scanner-placeholder" style="display: block;">
+                            <i class="fas fa-qrcode"></i>
+                            <p>QR 코드 스캔을 시작하세요</p>
+                        </div>
+                        <video id="qrScannerVideo" style="display: none;"></video>
+                        <canvas id="qrScannerCanvas" style="display: none;"></canvas>
+                    </div>
+                    <div class="scanner-controls">
+                        <button class="btn-start-scan" onclick="startQRScanner()">
+                            <i class="fas fa-camera"></i>
+                            스캔 시작
+                        </button>
+                        <button class="btn-stop-scan" onclick="stopQRScanner()" style="display: none;">
+                            <i class="fas fa-stop"></i>
+                            스캔 중지
+                        </button>
+                    </div>
+                    <div class="scan-results" id="scanResults" style="display: none;">
+                        <!-- 스캔 결과가 표시됨 -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 설정 섹션 -->
+            <section id="settingsSection" class="admin-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-cog"></i> 관리자 설정</h2>
+                </div>
+
+                <div class="settings-grid">
+                    <div class="settings-card">
+                        <h3><i class="fas fa-database"></i> 데이터베이스</h3>
+                        <div class="settings-content">
+                            <div class="setting-item">
+                                <label>Supabase 연결 상태</label>
+                                <span id="dbStatus" class="status-indicator">확인 중...</span>
+                            </div>
+                            <button onclick="testDbConnection()" class="btn-test">
+                                연결 테스트
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3><i class="fas fa-users"></i> 접근 권한</h3>
+                        <div class="settings-content">
+                            <div class="setting-item">
+                                <label>관리자 ID</label>
+                                <span id="currentAdminId">admin</span>
+                            </div>
+                            <button onclick="changeAdminPassword()" class="btn-change">
+                                비밀번호 변경
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3><i class="fas fa-download"></i> 데이터 백업</h3>
+                        <div class="settings-content">
+                            <button onclick="exportAllData()" class="btn-backup">
+                                <i class="fas fa-download"></i>
+                                전체 데이터 내보내기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 알림 컨테이너 -->
+    <div id="notificationContainer"></div>
+
+    <!-- QR 라이브러리 로더 (다중 CDN 지원) -->
+    <script>
+        // QR 라이브러리 로드 상태 추적
+        window.qrLibraryLoaded = false;
+        window.jsQRLibraryLoaded = false;
+        window.qrLibraryLoadPromise = null;
+        window.jsQRLibraryLoadPromise = null;
+        
+        // 다중 CDN 소스 정의 (로컬 파일 우선)
+        const qrCDNSources = [
+            './qrcode.min.js',  // 로컬 파일 우선
+            'https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js',
+            'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js',
+            'https://cdn.skypack.dev/qrcode@1.5.3'
+        ];
+        
+        const jsQRCDNSources = [
+            './jsqr.js',  // 로컬 파일 우선
+            'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js',
+            'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js'
+        ];
+        
+        // 단일 스크립트 로드 함수
+        function loadScript(url, timeout = 10000) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = url;
+                script.async = true;
+                
+                const timeoutId = setTimeout(() => {
+                    reject(new Error('로드 타임아웃'));
+                }, timeout);
+                
+                script.onload = () => {
+                    clearTimeout(timeoutId);
+                    resolve();
+                };
+                
+                script.onerror = () => {
+                    clearTimeout(timeoutId);
+                    reject(new Error('스크립트 로드 실패'));
+                };
+                
+                document.head.appendChild(script);
+            });
+        }
+        
+        // QR 라이브러리 로드 함수
+        function loadQRLibrary() {
+            if (window.qrLibraryLoadPromise) {
+                return window.qrLibraryLoadPromise;
+            }
+            
+            window.qrLibraryLoadPromise = new Promise(async (resolve, reject) => {
+                if (typeof QRCode !== 'undefined') {
+                    window.qrLibraryLoaded = true;
+                    console.log('✅ QRCode 라이브러리 이미 로드됨');
+                    resolve();
+                    return;
+                }
+                
+                for (let i = 0; i < qrCDNSources.length; i++) {
+                    const cdnUrl = qrCDNSources[i];
+                    console.log(`🔄 QRCode 라이브러리 로드 시도 (${i + 1}/${qrCDNSources.length}): ${cdnUrl}`);
+                    
+                    try {
+                        await loadScript(cdnUrl);
+                        
+                        if (typeof QRCode !== 'undefined') {
+                            window.qrLibraryLoaded = true;
+                            console.log(`✅ QRCode 라이브러리 로드 성공: ${cdnUrl}`);
+                            resolve();
+                            return;
+                        } else {
+                            throw new Error('QRCode 객체 없음');
+                        }
+                        
+                    } catch (error) {
+                        console.warn(`❌ CDN ${i + 1} 실패:`, error.message);
+                        if (i === qrCDNSources.length - 1) {
+                            console.error('❌ 모든 QRCode CDN 소스 로드 실패');
+                            reject(new Error('QR 라이브러리 로드 실패: 모든 CDN 소스가 응답하지 않습니다'));
+                        }
+                    }
+                }
+            });
+            
+            return window.qrLibraryLoadPromise;
+        }
+        
+        // jsQR 라이브러리 로드 함수
+        function loadJsQRLibrary() {
+            if (window.jsQRLibraryLoadPromise) {
+                return window.jsQRLibraryLoadPromise;
+            }
+            
+            window.jsQRLibraryLoadPromise = new Promise(async (resolve, reject) => {
+                if (typeof jsQR !== 'undefined') {
+                    window.jsQRLibraryLoaded = true;
+                    console.log('✅ jsQR 라이브러리 이미 로드됨');
+                    resolve();
+                    return;
+                }
+                
+                for (let i = 0; i < jsQRCDNSources.length; i++) {
+                    const cdnUrl = jsQRCDNSources[i];
+                    console.log(`🔄 jsQR 라이브러리 로드 시도 (${i + 1}/${jsQRCDNSources.length}): ${cdnUrl}`);
+                    
+                    try {
+                        await loadScript(cdnUrl);
+                        
+                        if (typeof jsQR !== 'undefined') {
+                            window.jsQRLibraryLoaded = true;
+                            console.log(`✅ jsQR 라이브러리 로드 성공: ${cdnUrl}`);
+                            resolve();
+                            return;
+                        } else {
+                            throw new Error('jsQR 객체 없음');
+                        }
+                        
+                    } catch (error) {
+                        console.warn(`❌ jsQR CDN ${i + 1} 실패:`, error.message);
+                        if (i === jsQRCDNSources.length - 1) {
+                            console.warn('⚠️ jsQR 라이브러리 로드 실패 - QR 스캔 기능 비활성화');
+                            resolve(); // jsQR 실패해도 계속 진행
+                        }
+                    }
+                }
+            });
+            
+            return window.jsQRLibraryLoadPromise;
+        }
+        
+        // 전역 QR 라이브러리 대기 함수
+        window.waitForQRLibrary = async function() {
+            if (window.qrLibraryLoaded && typeof QRCode !== 'undefined') {
+                return Promise.resolve();
+            }
+            
+            try {
+                await loadQRLibrary();
+                return Promise.resolve();
+            } catch (error) {
+                throw new Error('QR 라이브러리를 로드할 수 없습니다: ' + error.message);
+            }
+        };
+    </script>
+    
+    <!-- 메인 스크립트 -->
+    <script src="supabase-config.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>

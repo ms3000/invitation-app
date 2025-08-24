@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>컨퍼런스 초청장</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 헤더 섹션 -->
+        <header class="header">
+            <div class="hero-image">
+                <img src="https://via.placeholder.com/400x300/4a90e2/ffffff?text=Conference" alt="컨퍼런스 이미지">
+            </div>
+            <div class="hero-content">
+                <h1 class="event-title">2024 비즈니스 혁신 컨퍼런스</h1>
+                <p class="event-subtitle">미래를 준비하는 리더들의 만남</p>
+                <div class="event-date">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>2024년 12월 15일 (일) 오후 2시</span>
+                </div>
+                <div class="event-location">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>서울 강남구 컨벤션센터</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 인사말 섹션 -->
+        <section class="greeting">
+            <div class="section-header">
+                <h2><i class="fas fa-heart"></i> 인사말</h2>
+            </div>
+            <div class="greeting-content">
+                <p>안녕하세요!</p>
+                <p>급변하는 비즈니스 환경에서 혁신적인 사고와 전략이 그 어느 때보다 중요한 시점입니다.</p>
+                <p>이번 컨퍼런스에서는 업계 최고의 전문가들과 함께 미래 비즈니스 트렌드를 살펴보고, 실무에 바로 적용할 수 있는 인사이트를 공유하고자 합니다.</p>
+                <p>여러분의 소중한 참석을 기다리겠습니다.</p>
+                <div class="signature">
+                    <p>주최자 일동</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 행사 정보 섹션 -->
+        <section class="event-info">
+            <div class="section-header">
+                <h2><i class="fas fa-info-circle"></i> 행사 정보</h2>
+            </div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <i class="fas fa-calendar"></i>
+                    <div>
+                        <h3>일시</h3>
+                        <p>2024년 12월 15일 (일)<br>오후 2:00 ~ 오후 6:00</p>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <div>
+                        <h3>장소</h3>
+                        <p>서울 강남구 컨벤션센터<br>대강당 (3층)</p>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-users"></i>
+                    <div>
+                        <h3>참석 대상</h3>
+                        <p>기업 임직원, 창업가<br>비즈니스 관계자</p>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-ticket-alt"></i>
+                    <div>
+                        <h3>참가비</h3>
+                        <p>무료 (사전 등록 필수)</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 오시는 길 섹션 -->
+        <section class="location">
+            <div class="section-header">
+                <h2><i class="fas fa-route"></i> 오시는 길</h2>
+            </div>
+            <div class="location-content">
+                <div class="address">
+                    <h3>주소</h3>
+                    <p>서울특별시 강남구 테헤란로 123<br>컨벤션센터 3층 대강당</p>
+                </div>
+                <div class="map-container">
+                    <div class="map-placeholder">
+                        <i class="fas fa-map"></i>
+                        <p>지도 영역</p>
+                    </div>
+                </div>
+                <div class="transport-info">
+                    <h3>교통편</h3>
+                    <div class="transport-item">
+                        <i class="fas fa-subway"></i>
+                        <span>지하철 2호선 강남역 3번 출구 도보 5분</span>
+                    </div>
+                    <div class="transport-item">
+                        <i class="fas fa-bus"></i>
+                        <span>버스 146, 360, 740 강남역 하차</span>
+                    </div>
+                    <div class="transport-item">
+                        <i class="fas fa-car"></i>
+                        <span>지하 주차장 이용 가능 (2시간 무료)</span>
+                    </div>
+                </div>
+                <button class="btn-navigation" onclick="openNavigation()">
+                    <i class="fas fa-navigation"></i>
+                    길찾기
+                </button>
+            </div>
+        </section>
+
+        <!-- 갤러리 섹션 -->
+        <section class="gallery">
+            <div class="section-header">
+                <h2><i class="fas fa-images"></i> 갤러리</h2>
+            </div>
+            <div class="gallery-grid">
+                <div class="gallery-item">
+                    <img src="https://via.placeholder.com/300x200/e74c3c/ffffff?text=Image+1" alt="갤러리 이미지 1">
+                </div>
+                <div class="gallery-item">
+                    <img src="https://via.placeholder.com/300x200/27ae60/ffffff?text=Image+2" alt="갤러리 이미지 2">
+                </div>
+                <div class="gallery-item">
+                    <img src="https://via.placeholder.com/300x200/f39c12/ffffff?text=Image+3" alt="갤러리 이미지 3">
+                </div>
+                <div class="gallery-item">
+                    <img src="https://via.placeholder.com/300x200/9b59b6/ffffff?text=Image+4" alt="갤러리 이미지 4">
+                </div>
+            </div>
+        </section>
+
+        <!-- 연락처 섹션 -->
+        <section class="contact">
+            <div class="section-header">
+                <h2><i class="fas fa-phone"></i> 연락처</h2>
+            </div>
+            <div class="contact-info">
+                <div class="contact-item">
+                    <button class="btn-contact" onclick="makeCall('02-1234-5678')">
+                        <i class="fas fa-phone"></i>
+                        <div>
+                            <span>전화 문의</span>
+                            <span>02-1234-5678</span>
+                        </div>
+                    </button>
+                </div>
+                <div class="contact-item">
+                    <button class="btn-contact" onclick="sendEmail('info@conference.com')">
+                        <i class="fas fa-envelope"></i>
+                        <div>
+                            <span>이메일 문의</span>
+                            <span>info@conference.com</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- RSVP 섹션 -->
+        <section class="rsvp">
+            <div class="section-header">
+                <h2><i class="fas fa-check-circle"></i> 참석 여부</h2>
+            </div>
+            <div class="rsvp-content">
+                <p>참석 여부를 알려주시면 더욱 원활한 행사 진행에 도움이 됩니다.</p>
+                <div class="rsvp-buttons">
+                    <button class="btn-rsvp btn-yes" onclick="rsvpResponse('yes')">
+                        <i class="fas fa-thumbs-up"></i>
+                        참석
+                    </button>
+                    <button class="btn-rsvp btn-no" onclick="rsvpResponse('no')">
+                        <i class="fas fa-thumbs-down"></i>
+                        불참
+                    </button>
+                </div>
+                
+                <!-- QR 코드 영역 -->
+                <div class="qr-code-section" id="qrCodeSection" style="display: none;">
+                    <div class="qr-code-info">
+                        <h3><i class="fas fa-qrcode"></i> 입장용 QR 코드</h3>
+                        <p>행사 당일 아래 QR 코드를 제시해 주세요</p>
+                    </div>
+                    <div class="qr-code-container">
+                        <canvas id="qrCodeCanvas"></canvas>
+                        <div class="qr-code-details">
+                            <p class="qr-code-id">QR ID: <span id="qrCodeId">-</span></p>
+                            <p class="qr-code-name">참석자: <span id="qrCodeName">-</span></p>
+                        </div>
+                    </div>
+                    <div class="qr-code-actions">
+                        <button class="btn-download-qr" onclick="downloadQRCode()">
+                            <i class="fas fa-download"></i>
+                            QR 코드 저장
+                        </button>
+                        <button class="btn-share-qr" onclick="shareQRCode()">
+                            <i class="fas fa-share"></i>
+                            공유하기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- 방명록 섹션 -->
+        <section class="guestbook">
+            <div class="section-header">
+                <h2><i class="fas fa-comments"></i> 방명록</h2>
+            </div>
+            <div class="guestbook-form">
+                <input type="text" id="guestName" placeholder="이름을 입력해주세요" maxlength="20">
+                <textarea id="guestMessage" placeholder="메시지를 남겨주세요" maxlength="200" rows="3"></textarea>
+                <button class="btn-submit" onclick="submitGuestbook()">
+                    <i class="fas fa-paper-plane"></i>
+                    메시지 남기기
+                </button>
+            </div>
+            <div class="guestbook-messages" id="guestbookMessages">
+                <div class="message-item">
+                    <div class="message-header">
+                        <span class="message-name">김비즈</span>
+                        <span class="message-date">2024-11-20</span>
+                    </div>
+                    <div class="message-content">
+                        기대되는 컨퍼런스네요! 꼭 참석하겠습니다.
+                    </div>
+                </div>
+                <div class="message-item">
+                    <div class="message-header">
+                        <span class="message-name">이혁신</span>
+                        <span class="message-date">2024-11-19</span>
+                    </div>
+                    <div class="message-content">
+                        유익한 정보 많이 얻어가겠습니다. 감사합니다!
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 계좌 정보 섹션 (선택사항) -->
+        <section class="donation">
+            <div class="section-header">
+                <h2><i class="fas fa-gift"></i> 마음 전하기</h2>
+            </div>
+            <div class="donation-content">
+                <p>후원을 통해 더 나은 행사를 만들어가겠습니다.</p>
+                <div class="account-info">
+                    <div class="account-item">
+                        <span class="bank-name">국민은행</span>
+                        <span class="account-number">123456-78-901234</span>
+                        <button class="btn-copy" onclick="copyAccount('123456-78-901234')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <div class="account-holder">예금주: 컨퍼런스주최자</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 관리자 페이지 링크 -->
+        <div class="admin-link">
+            <a href="admin.html" class="btn-admin-link">
+                <i class="fas fa-cog"></i>
+                관리자 페이지
+            </a>
+        </div>
+    </div>
+
+    <!-- QR 라이브러리 로더 (다중 CDN 지원) -->
+    <script>
+        // QR 라이브러리 로드 상태 추적
+        window.qrLibraryLoaded = false;
+        window.jsQRLibraryLoaded = false;
+        window.qrLibraryLoadPromise = null;
+        window.jsQRLibraryLoadPromise = null;
+        
+        // 다중 CDN 소스 정의 (로컬 파일 우선)
+        const qrCDNSources = [
+            './qrcode.min.js',  // 로컬 파일 우선
+            'https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js',
+            'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js',
+            'https://cdn.skypack.dev/qrcode@1.5.3'
+        ];
+        
+        const jsQRCDNSources = [
+            './jsqr.js',  // 로컬 파일 우선
+            'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js',
+            'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js'
+        ];
+        
+        // 단일 스크립트 로드 함수
+        function loadScript(url, timeout = 10000) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = url;
+                script.async = true;
+                
+                const timeoutId = setTimeout(() => {
+                    reject(new Error('로드 타임아웃'));
+                }, timeout);
+                
+                script.onload = () => {
+                    clearTimeout(timeoutId);
+                    resolve();
+                };
+                
+                script.onerror = () => {
+                    clearTimeout(timeoutId);
+                    reject(new Error('스크립트 로드 실패'));
+                };
+                
+                document.head.appendChild(script);
+            });
+        }
+        
+        // QR 라이브러리 로드 함수
+        function loadQRLibrary() {
+            if (window.qrLibraryLoadPromise) {
+                return window.qrLibraryLoadPromise;
+            }
+            
+            window.qrLibraryLoadPromise = new Promise(async (resolve, reject) => {
+                // 이미 로드되었는지 확인
+                if (typeof QRCode !== 'undefined') {
+                    window.qrLibraryLoaded = true;
+                    console.log('✅ QRCode 라이브러리 이미 로드됨');
+                    resolve();
+                    return;
+                }
+                
+                // 각 CDN 소스를 순차적으로 시도
+                for (let i = 0; i < qrCDNSources.length; i++) {
+                    const cdnUrl = qrCDNSources[i];
+                    console.log(`🔄 QRCode 라이브러리 로드 시도 (${i + 1}/${qrCDNSources.length}): ${cdnUrl}`);
+                    
+                    try {
+                        await loadScript(cdnUrl);
+                        
+                        // QRCode 객체가 실제로 사용가능한지 확인
+                        if (typeof QRCode !== 'undefined') {
+                            window.qrLibraryLoaded = true;
+                            console.log(`✅ QRCode 라이브러리 로드 성공: ${cdnUrl}`);
+                            resolve();
+                            return;
+                        } else {
+                            throw new Error('QRCode 객체 없음');
+                        }
+                        
+                    } catch (error) {
+                        console.warn(`❌ CDN ${i + 1} 실패:`, error.message);
+                        // 마지막 CDN도 실패하면 reject
+                        if (i === qrCDNSources.length - 1) {
+                            console.error('❌ 모든 QRCode CDN 소스 로드 실패');
+                            reject(new Error('QR 라이브러리 로드 실패: 모든 CDN 소스가 응답하지 않습니다'));
+                        }
+                    }
+                }
+            });
+            
+            return window.qrLibraryLoadPromise;
+        }
+        
+        // jsQR 라이브러리 로드 함수
+        function loadJsQRLibrary() {
+            if (window.jsQRLibraryLoadPromise) {
+                return window.jsQRLibraryLoadPromise;
+            }
+            
+            window.jsQRLibraryLoadPromise = new Promise(async (resolve, reject) => {
+                // 이미 로드되었는지 확인
+                if (typeof jsQR !== 'undefined') {
+                    window.jsQRLibraryLoaded = true;
+                    console.log('✅ jsQR 라이브러리 이미 로드됨');
+                    resolve();
+                    return;
+                }
+                
+                // 각 CDN 소스를 순차적으로 시도
+                for (let i = 0; i < jsQRCDNSources.length; i++) {
+                    const cdnUrl = jsQRCDNSources[i];
+                    console.log(`🔄 jsQR 라이브러리 로드 시도 (${i + 1}/${jsQRCDNSources.length}): ${cdnUrl}`);
+                    
+                    try {
+                        await loadScript(cdnUrl);
+                        
+                        // jsQR 객체가 실제로 사용가능한지 확인
+                        if (typeof jsQR !== 'undefined') {
+                            window.jsQRLibraryLoaded = true;
+                            console.log(`✅ jsQR 라이브러리 로드 성공: ${cdnUrl}`);
+                            resolve();
+                            return;
+                        } else {
+                            throw new Error('jsQR 객체 없음');
+                        }
+                        
+                    } catch (error) {
+                        console.warn(`❌ jsQR CDN ${i + 1} 실패:`, error.message);
+                        // 마지막 CDN도 실패하면 resolve (jsQR은 선택사항)
+                        if (i === jsQRCDNSources.length - 1) {
+                            console.warn('⚠️ jsQR 라이브러리 로드 실패 - QR 스캔 기능 비활성화');
+                            resolve(); // jsQR 실패해도 계속 진행
+                        }
+                    }
+                }
+            });
+            
+            return window.jsQRLibraryLoadPromise;
+        }
+        
+        // 전역 QR 라이브러리 대기 함수
+        window.waitForQRLibrary = async function() {
+            if (window.qrLibraryLoaded && typeof QRCode !== 'undefined') {
+                return Promise.resolve();
+            }
+            
+            try {
+                await loadQRLibrary();
+                return Promise.resolve();
+            } catch (error) {
+                throw new Error('QR 라이브러리를 로드할 수 없습니다: ' + error.message);
+            }
+        };
+        
+        // 페이지 로드 시 라이브러리 로드
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 QR 라이브러리 로드 시작...');
+            
+            try {
+                // QRCode 라이브러리 로드 (필수)
+                await loadQRLibrary();
+                console.log('🎉 QRCode 라이브러리 준비 완료');
+                
+                // jsQR 라이브러리 로드 (선택사항)
+                await loadJsQRLibrary();
+                if (window.jsQRLibraryLoaded) {
+                    console.log('🎉 jsQR 라이브러리 준비 완료');
+                }
+                
+                // 디버깅 도구 제공
+                window.debugQR = {
+                    checkQRLibrary: () => {
+                        console.log('QRCode 상태:', typeof QRCode !== 'undefined' ? '✅ 로드됨' : '❌ 로드 안됨');
+                        console.log('jsQR 상태:', typeof jsQR !== 'undefined' ? '✅ 로드됨' : '❌ 로드 안됨');
+                        return {
+                            qrcode: typeof QRCode !== 'undefined',
+                            jsqr: typeof jsQR !== 'undefined'
+                        };
+                    }
+                };
+                
+                console.log('🛠️ 디버깅: debugQR.checkQRLibrary()를 사용해 QR 라이브러리 상태를 확인할 수 있습니다.');
+                
+                // QR 기능 준비 완료 알림
+                setTimeout(() => {
+                    if (typeof showNotification === 'function') {
+                        showNotification('✅ QR 코드 기능이 준비되었습니다!', 'success');
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                console.error('💥 QR 라이브러리 로드 최종 실패:', error);
+                // 사용자에게 알림
+                setTimeout(() => {
+                    if (typeof showNotification === 'function') {
+                        showNotification('QR 코드 기능을 사용할 수 없습니다. 네트워크 연결을 확인해주세요.', 'error');
+                    }
+                }, 2000);
+            }
+        });
+    </script>
+    
+    <!-- 메인 스크립트 -->
+    <script src="supabase-config.js"></script>
+    <script src="user.js"></script>
+</body>
+</html>
