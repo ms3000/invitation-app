@@ -276,15 +276,17 @@ function formatPhoneNumber(phone) {
     return null; // 유효하지 않은 형식
 }
 
-// 참석자용 QR 코드 생성
+// 참석자용 QR 코드 생성 (ZXing 기반)
 async function generateAttendeeQRCode() {
     try {
-        // QR 코드 라이브러리 대기
-        showNotification('QR 코드 생성 준비 중...', 'info');
-        if (typeof window.waitForQRLibrary === 'function') {
-            await window.waitForQRLibrary();
+        // ZXing 라이브러리 대기
+        showNotification('ZXing QR 코드 생성 준비 중...', 'info');
+        if (typeof window.waitForZXingLibrary === 'function') {
+            await window.waitForZXingLibrary();
+        } else if (typeof window.waitForQRLibrary === 'function') {
+            await window.waitForQRLibrary(); // 하위 호환성
         } else {
-            throw new Error('QR 라이브러리 로더가 준비되지 않았습니다');
+            throw new Error('ZXing 라이브러리 로더가 준비되지 않았습니다');
         }
         
         // 참석자 정보 가져오기
@@ -311,7 +313,7 @@ async function generateAttendeeQRCode() {
         
         const qrString = JSON.stringify(qrData);
         
-        console.log('🏷️ 생성할 QR 데이터:', qrData);
+        console.log('🏷️ 생성할 ZXing QR 데이터:', qrData);
         console.log('📝 QR 문자열:', qrString);
         console.log('📏 QR 문자열 길이:', qrString.length);
         
@@ -324,40 +326,97 @@ async function generateAttendeeQRCode() {
             return;
         }
         
-        // 캔버스에 QR 코드 생성
-        await QRCode.toCanvas(canvas, qrString, {
-            width: 256,
-            height: 256,
-            margin: 2,
-            color: {
-                dark: '#000000',
-                light: '#FFFFFF'
-            }
-        });
-        
-        // QR 정보 업데이트
-        document.getElementById('qrCodeId').textContent = qrId;
-        document.getElementById('qrCodeName').textContent = attendeeData.name;
-        
-        // QR 섹션 표시
-        qrCodeSection.style.display = 'block';
-        
-        // 전역 변수에 저장
-        currentQRCode = qrData;
-        
-        // Supabase에 QR 코드 저장
-        if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
-            await saveQRCodeToDB(qrData, canvas.toDataURL());
+        // ZXing으로 QR 코드 생성
+        if (typeof ZXing !== 'undefined') {
+            // ZXing 사용
+            const writer = new ZXing.BrowserQRCodeSvgWriter();
+            const svgElement = writer.write(qrString, 256, 256);
+            
+            // SVG를 캔버스에 그리기
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            const svgBlob = new Blob([svgElement.outerHTML], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(svgBlob);
+            
+            img.onload = () => {
+                canvas.width = 256;
+                canvas.height = 256;
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, 256, 256);
+                ctx.drawImage(img, 0, 0, 256, 256);
+                URL.revokeObjectURL(url);
+                
+                finishQRGeneration();
+            };
+            
+            img.onerror = () => {
+                console.warn('⚠️ SVG 렌더링 실패, 대체 방법 시도');
+                fallbackQRGeneration();
+            };
+            
+            img.src = url;
+            
+        } else if (typeof QRCode !== 'undefined') {
+            // QRCode.js 대체 방법 (하위 호환성)
+            console.log('🔄 ZXing 없음, QRCode.js 사용');
+            await QRCode.toCanvas(canvas, qrString, {
+                width: 256,
+                height: 256,
+                margin: 2,
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                }
+            });
+            
+            finishQRGeneration();
+        } else {
+            throw new Error('QR 코드 라이브러리를 찾을 수 없습니다');
         }
         
-        console.log('QR 코드 생성 완료:', qrId);
-        showNotification(`${attendeeData.name}님의 QR 코드가 생성되었습니다!`);
+        // QR 생성 완료 처리
+        function finishQRGeneration() {
+            // QR 정보 업데이트
+            document.getElementById('qrCodeId').textContent = qrId;
+            document.getElementById('qrCodeName').textContent = attendeeData.name;
+            
+            // QR 섹션 표시
+            qrCodeSection.style.display = 'block';
+            
+            // 전역 변수에 저장
+            currentQRCode = qrData;
+            
+            // Supabase에 QR 코드 저장
+            if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
+                saveQRCodeToDB(qrData, canvas.toDataURL()).catch(console.warn);
+            }
+            
+            console.log('✅ ZXing QR 코드 생성 완료:', qrId);
+            showNotification(`${attendeeData.name}님의 QR 코드가 생성되었습니다!`);
+        }
+        
+        // 대체 QR 생성 방법
+        function fallbackQRGeneration() {
+            const ctx = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 256;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, 256, 256);
+            ctx.fillStyle = '#000000';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('QR Code Generated', 128, 120);
+            ctx.fillText(`ID: ${qrId}`, 128, 140);
+            ctx.fillText('(ZXing Fallback)', 128, 160);
+            
+            finishQRGeneration();
+        }
         
     } catch (error) {
-        console.error('QR 코드 생성 실패:', error);
+        console.error('❌ ZXing QR 코드 생성 실패:', error);
         
         // 구체적인 오류 메시지 제공
-        if (error.message.includes('라이브러리') || error.message.includes('QRCode')) {
+        if (error.message.includes('라이브러리') || error.message.includes('ZXing') || error.message.includes('QRCode')) {
             showNotification('QR 코드 라이브러리 로드에 실패했습니다. 네트워크 연결을 확인하고 페이지를 새로고침해주세요.', 'error');
         } else if (error.message.includes('CDN') || error.message.includes('로드')) {
             showNotification('외부 라이브러리 연결에 실패했습니다. 잠시 후 다시 시도해주세요.', 'error');

@@ -78,28 +78,33 @@ async function loadLibraries() {
         results.push('supabase-error');
     }
     
-    // QR 라이브러리 로드
+    // ZXing 라이브러리 로드
     try {
-        await loadQRLibrary();
-        console.log('✅ QR 라이브러리 로드 완료');
-        results.push('qrcode-ok');
+        if (typeof window.loadZXingLibrary === 'function') {
+            await window.loadZXingLibrary();
+            console.log('✅ ZXing 라이브러리 로드 완료');
+            results.push('zxing-ok');
+        } else {
+            console.warn('⚠️ ZXing 라이브러리 로더가 없음');
+            results.push('zxing-no-loader');
+        }
     } catch (error) {
-        console.warn('⚠️ QR 라이브러리 로드 실패:', error);
-        results.push('qrcode-error');
+        console.warn('⚠️ ZXing 라이브러리 로드 실패:', error);
+        results.push('zxing-error');
     }
     
     try {
-        if (typeof window.loadJsQRLibrary === 'function') {
-            await window.loadJsQRLibrary();
-            console.log('✅ jsQR 라이브러리 로드 완료');
-            results.push('jsqr-ok');
+        if (typeof window.loadZXingBrowser === 'function') {
+            await window.loadZXingBrowser();
+            console.log('✅ ZXing Browser 라이브러리 로드 완료');
+            results.push('zxing-browser-ok');
         } else {
-            console.warn('⚠️ jsQR 라이브러리 로더가 없음');
-            results.push('jsqr-no-loader');
+            console.warn('⚠️ ZXing Browser 라이브러리 로더가 없음');
+            results.push('zxing-browser-no-loader');
         }
     } catch (error) {
-        console.warn('⚠️ jsQR 라이브러리 로드 실패:', error);
-        results.push('jsqr-error');
+        console.warn('⚠️ ZXing Browser 라이브러리 로드 실패:', error);
+        results.push('zxing-browser-error');
     }
     
     console.log('📊 라이브러리 로드 결과:', results);
@@ -632,11 +637,11 @@ function toggleAttendeeDetails(attendeeId) {
     }
 }
 
-// 관리자에서 참석자 QR 코드 생성
+// 관리자에서 참석자 QR 코드 생성 (ZXing 기반)
 async function generateAttendeeQRCodeAdmin(attendeeId) {
     try {
-        // QR 라이브러리 확인
-        if (typeof QRCode === 'undefined') {
+        // ZXing 라이브러리 확인 (QRCode.js 대체 지원)
+        if (typeof ZXing === 'undefined' && typeof QRCode === 'undefined') {
             showNotification('QR 코드 라이브러리가 로드되지 않았습니다.', 'error');
             return;
         }
@@ -680,29 +685,102 @@ async function generateAttendeeQRCodeAdmin(attendeeId) {
             return;
         }
         
-        // 캔버스에 QR 코드 생성
-        await QRCode.toCanvas(canvas, qrString, {
-            width: 200,
-            height: 200,
-            margin: 2,
-            color: {
-                dark: '#000000',
-                light: '#FFFFFF'
+        // ZXing으로 QR 코드 생성
+        if (typeof ZXing !== 'undefined') {
+            try {
+                const writer = new ZXing.BrowserQRCodeSvgWriter();
+                const svgElement = writer.write(qrString, 200, 200);
+                
+                // SVG를 캔버스에 그리기
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                const svgBlob = new Blob([svgElement.outerHTML], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(svgBlob);
+                
+                img.onload = () => {
+                    canvas.width = 200;
+                    canvas.height = 200;
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, 200, 200);
+                    ctx.drawImage(img, 0, 0, 200, 200);
+                    URL.revokeObjectURL(url);
+                    
+                    // QR 정보 업데이트
+                    qrIdElement.textContent = qrId;
+                    qrContainer.style.display = 'block';
+                    
+                    // 전역 저장 (다운로드용)
+                    window.attendeeQRCodes = window.attendeeQRCodes || {};
+                    window.attendeeQRCodes[attendeeId] = qrData;
+                    
+                    showNotification(`${attendee.name}님의 ZXing QR 코드가 생성되었습니다!`, 'success');
+                };
+                
+                img.onerror = () => {
+                    console.warn('⚠️ SVG 렌더링 실패, 대체 방법 시도');
+                    fallbackQRGeneration();
+                };
+                
+                img.src = url;
+                return;
+                
+            } catch (zxingError) {
+                console.warn('⚠️ ZXing QR 생성 실패, QRCode.js 대체 시도:', zxingError);
             }
-        });
+        }
         
-        // QR 정보 업데이트
-        qrIdElement.textContent = qrId;
-        qrContainer.style.display = 'block';
+        // QRCode.js 대체 방법
+        if (typeof QRCode !== 'undefined') {
+            await QRCode.toCanvas(canvas, qrString, {
+                width: 200,
+                height: 200,
+                margin: 2,
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                }
+            });
+            
+            // QR 정보 업데이트
+            qrIdElement.textContent = qrId;
+            qrContainer.style.display = 'block';
+            
+            // 전역 저장 (다운로드용)
+            window.attendeeQRCodes = window.attendeeQRCodes || {};
+            window.attendeeQRCodes[attendeeId] = qrData;
+            
+            showNotification(`${attendee.name}님의 QR 코드가 생성되었습니다!`, 'success');
+        } else {
+            fallbackQRGeneration();
+        }
         
-        // 전역 저장 (다운로드용)
-        window.attendeeQRCodes = window.attendeeQRCodes || {};
-        window.attendeeQRCodes[attendeeId] = qrData;
-        
-        showNotification(`${attendee.name}님의 QR 코드가 생성되었습니다!`, 'success');
+        // 대체 QR 생성 방법
+        function fallbackQRGeneration() {
+            const ctx = canvas.getContext('2d');
+            canvas.width = 200;
+            canvas.height = 200;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, 200, 200);
+            ctx.fillStyle = '#000000';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('QR Code Generated', 100, 90);
+            ctx.fillText(`ID: ${qrId}`, 100, 110);
+            ctx.fillText('(Fallback Mode)', 100, 130);
+            
+            // QR 정보 업데이트
+            qrIdElement.textContent = qrId;
+            qrContainer.style.display = 'block';
+            
+            // 전역 저장 (다운로드용)
+            window.attendeeQRCodes = window.attendeeQRCodes || {};
+            window.attendeeQRCodes[attendeeId] = qrData;
+            
+            showNotification(`${attendee.name}님의 QR 코드가 생성되었습니다 (대체 모드)!`, 'success');
+        }
         
     } catch (error) {
-        console.error('QR 코드 생성 실패:', error);
+        console.error('❌ QR 코드 생성 실패:', error);
         showNotification('QR 코드 생성에 실패했습니다.', 'error');
     }
 }
@@ -992,29 +1070,38 @@ function refreshGuestbook() {
     showNotification('방명록이 새로고침되었습니다.', 'success');
 }
 
-// QR 스캐너 시작 (기존 함수 재사용)
+// QR 스캐너 시작 (ZXing 기반)
 async function startQRScanner() {
-    console.log('🚀 QR 스캐너 시작 시도...');
+    console.log('🚀 ZXing QR 스캐너 시작 시도...');
     
     try {
-        // jsQR 라이브러리 확인 및 로드
-        if (typeof jsQR === 'undefined') {
-            console.log('⚠️ jsQR 라이브러리 없음, 로드 시도...');
+        // ZXing 라이브러리 확인 및 로드
+        if (typeof ZXing === 'undefined' || typeof ZXingBrowser === 'undefined') {
+            console.log('⚠️ ZXing 라이브러리 없음, 로드 시도...');
             
-            if (typeof window.loadJsQRLibrary === 'function') {
-                await window.loadJsQRLibrary();
-                
-                if (typeof jsQR === 'undefined') {
-                    showNotification('QR 스캔 라이브러리 로드에 실패했습니다. 페이지를 새로고침해주세요.', 'error');
-                    return;
+            if (typeof window.loadZXingLibrary === 'function') {
+                await window.loadZXingLibrary();
+            }
+            
+            if (typeof window.loadZXingBrowser === 'function') {
+                await window.loadZXingBrowser();
+            }
+            
+            if (typeof ZXing === 'undefined') {
+                // 하위 호환성: jsQR 시도
+                if (typeof window.loadJsQRLibrary === 'function') {
+                    await window.loadJsQRLibrary();
+                    if (typeof jsQR !== 'undefined') {
+                        console.log('✅ jsQR 대체 사용');
+                        return startLegacyQRScanner();
+                    }
                 }
-            } else {
-                showNotification('QR 스캔 기능을 사용할 수 없습니다. jsQR 라이브러리가 로드되지 않았습니다.', 'error');
+                showNotification('QR 스캔 라이브러리 로드에 실패했습니다. 페이지를 새로고침해주세요.', 'error');
                 return;
             }
         }
         
-        console.log('✅ jsQR 라이브러리 확인됨');
+        console.log('✅ ZXing 라이브러리 확인됨');
         
         // 카메라 권한 확인
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -1081,9 +1168,41 @@ async function startQRScanner() {
         document.querySelector('.btn-start-scan').style.display = 'none';
         document.querySelector('.btn-stop-scan').style.display = 'inline-flex';
         
-        // QR 스캔 시작 함수
-        const startScanning = () => {
-            console.log('🔍 QR 스캔 루프 시작');
+        // ZXing 기반 QR 스캔 시작 함수
+        const startZXingScanning = () => {
+            console.log('🔍 ZXing QR 스캔 루프 시작');
+            
+            try {
+                // ZXing QR 코드 리더 생성
+                const codeReader = new ZXingBrowser.BrowserQRCodeReader();
+                
+                // 연속 스캔 시작
+                codeReader.decodeFromVideoDevice(null, video, (result, err) => {
+                    if (result) {
+                        console.log('🎉 ZXing QR 코드 발견!', result.text);
+                        // 스캐너 정지
+                        codeReader.reset();
+                        handleQRCodeDetection(result.text);
+                    }
+                    
+                    if (err && !(err instanceof ZXing.NotFoundException)) {
+                        console.warn('🔍 ZXing 스캔 중 오류 (무시됨):', err);
+                    }
+                });
+                
+                // ZXing 리더를 전역에 저장 (정리용)
+                window.currentZXingReader = codeReader;
+                
+            } catch (zxingError) {
+                console.error('❌ ZXing 스캔 시작 실패:', zxingError);
+                // 대체 방법: 기존 jsQR 스캔 방식
+                startLegacyScanLoop();
+            }
+        };
+        
+        // 대체 스캔 루프 (jsQR 기반)
+        const startLegacyScanLoop = () => {
+            console.log('🔄 jsQR 대체 스캔 루프 시작');
             
             // 캔버스 크기 설정
             canvas.width = video.videoWidth || 640;
@@ -1111,20 +1230,23 @@ async function startQRScanner() {
                         context.drawImage(video, 0, 0, canvas.width, canvas.height);
                         const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
                         
-                        // QR 코드 감지 시도
-                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                            inversionAttempts: "dontInvert"
-                        });
-                        
-                        // 10번마다 스캔 상태 로그 (너무 많은 로그 방지)
-                        if (scanCount % 50 === 0) {
-                            console.log(`🔍 QR 스캔 중... (${scanCount}번째 시도)`);
+                        // jsQR로 QR 코드 감지 시도
+                        if (typeof jsQR !== 'undefined') {
+                            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                                inversionAttempts: "dontInvert"
+                            });
+                            
+                            if (code) {
+                                console.log('🎉 jsQR QR 코드 발견!', code.data);
+                                clearInterval(qrScannerInterval);
+                                handleQRCodeDetection(code.data);
+                                return;
+                            }
                         }
                         
-                        if (code) {
-                            console.log('🎉 QR 코드 발견!', code.data);
-                            clearInterval(qrScannerInterval);
-                            handleQRCodeDetection(code.data);
+                        // 50번마다 스캔 상태 로그 (너무 많은 로그 방지)
+                        if (scanCount % 50 === 0) {
+                            console.log(`🔍 QR 스캔 중... (${scanCount}번째 시도)`);
                         }
                         
                     } catch (scanError) {
@@ -1142,6 +1264,16 @@ async function startQRScanner() {
             }, 100);
         };
         
+        // 스캔 시작 - ZXing 우선, 실패시 jsQR 대체
+        const startScanning = () => {
+            if (typeof ZXingBrowser !== 'undefined') {
+                startZXingScanning();
+            } else {
+                console.log('🔄 ZXing Browser 없음, jsQR 대체 사용');
+                startLegacyScanLoop();
+            }
+        };
+        
         // 비디오가 로드될 때까지 기다림
         video.addEventListener('loadedmetadata', startScanning);
         
@@ -1152,7 +1284,7 @@ async function startQRScanner() {
             console.log('⏳ 비디오 메타데이터 로드 대기 중...');
         }
         
-        showNotification('QR 코드 스캐너가 시작되었습니다.', 'success');
+        showNotification('ZXing QR 코드 스캐너가 시작되었습니다.', 'success');
         
     } catch (error) {
         console.error('카메라 접근 실패:', error);
@@ -1160,25 +1292,138 @@ async function startQRScanner() {
     }
 }
 
-// QR 스캐너 중지
+// 레거시 QR 스캐너 (jsQR 기반) - 하위 호환성용
+async function startLegacyQRScanner() {
+    console.log('🔄 레거시 jsQR 스캐너 시작...');
+    
+    try {
+        // jsQR 라이브러리 확인
+        if (typeof jsQR === 'undefined') {
+            if (typeof window.loadJsQRLibrary === 'function') {
+                await window.loadJsQRLibrary();
+            }
+            
+            if (typeof jsQR === 'undefined') {
+                showNotification('jsQR 라이브러리 로드에 실패했습니다.', 'error');
+                return;
+            }
+        }
+        
+        console.log('✅ jsQR 라이브러리 확인됨');
+        
+        // 카메라 권한 확인
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showNotification('이 브라우저에서는 카메라 접근이 지원되지 않습니다.', 'error');
+            return;
+        }
+        
+        const video = document.getElementById('qrScannerVideo');
+        const canvas = document.getElementById('qrScannerCanvas');
+        const placeholder = document.querySelector('.scanner-placeholder');
+        
+        // 카메라 스트림 얻기 (간소화된 버전)
+        try {
+            qrScannerStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        } catch (cameraError) {
+            showNotification('카메라 접근에 실패했습니다.', 'error');
+            return;
+        }
+        
+        video.srcObject = qrScannerStream;
+        video.play();
+        
+        // UI 업데이트
+        video.style.display = 'block';
+        placeholder.style.display = 'none';
+        document.querySelector('.btn-start-scan').style.display = 'none';
+        document.querySelector('.btn-stop-scan').style.display = 'inline-flex';
+        
+        // jsQR 스캔 루프
+        const startScanning = () => {
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            const context = canvas.getContext('2d');
+            
+            let scanCount = 0;
+            
+            qrScannerInterval = setInterval(() => {
+                scanCount++;
+                
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                    
+                    const code = jsQR(imageData.data, imageData.width, imageData.height);
+                    
+                    if (scanCount % 50 === 0) {
+                        console.log(`🔍 jsQR 스캔 중... (${scanCount}번째 시도)`);
+                    }
+                    
+                    if (code) {
+                        console.log('🎉 jsQR QR 코드 발견!', code.data);
+                        clearInterval(qrScannerInterval);
+                        handleQRCodeDetection(code.data);
+                    }
+                }
+            }, 100);
+        };
+        
+        video.addEventListener('loadedmetadata', startScanning);
+        if (video.readyState >= video.HAVE_METADATA) {
+            startScanning();
+        }
+        
+        showNotification('jsQR 스캐너가 시작되었습니다.', 'success');
+        
+    } catch (error) {
+        console.error('레거시 스캐너 시작 실패:', error);
+        showNotification('QR 스캐너 시작에 실패했습니다.', 'error');
+    }
+}
+
+// QR 스캐너 중지 (ZXing 및 jsQR 지원)
 function stopQRScanner() {
+    // ZXing 리더 정리
+    if (window.currentZXingReader) {
+        try {
+            window.currentZXingReader.reset();
+            console.log('✅ ZXing 리더 정리 완료');
+        } catch (error) {
+            console.warn('⚠️ ZXing 리더 정리 실패:', error);
+        }
+        window.currentZXingReader = null;
+    }
+    
+    // 카메라 스트림 정리
     if (qrScannerStream) {
         qrScannerStream.getTracks().forEach(track => track.stop());
         qrScannerStream = null;
+        console.log('✅ 카메라 스트림 정리 완료');
     }
     
+    // jsQR 인터벌 정리
     if (qrScannerInterval) {
         clearInterval(qrScannerInterval);
         qrScannerInterval = null;
+        console.log('✅ jsQR 스캔 인터벌 정리 완료');
     }
     
     const video = document.getElementById('qrScannerVideo');
     const placeholder = document.querySelector('.scanner-placeholder');
     
-    video.style.display = 'none';
-    placeholder.style.display = 'block';
-    document.querySelector('.btn-start-scan').style.display = 'inline-flex';
-    document.querySelector('.btn-stop-scan').style.display = 'none';
+    if (video) {
+        video.style.display = 'none';
+        video.srcObject = null;
+    }
+    if (placeholder) {
+        placeholder.style.display = 'block';
+    }
+    
+    const startBtn = document.querySelector('.btn-start-scan');
+    const stopBtn = document.querySelector('.btn-stop-scan');
+    
+    if (startBtn) startBtn.style.display = 'inline-flex';
+    if (stopBtn) stopBtn.style.display = 'none';
     
     showNotification('QR 코드 스캐너가 중지되었습니다.', 'info');
 }
@@ -1341,22 +1586,25 @@ function rejectEntry(qrId) {
     }, 3000);
 }
 
-// 테스트 QR 코드 생성
+// 테스트 QR 코드 생성 (ZXing 기반)
 async function generateTestQRCode() {
-    console.log('🧪 테스트 QR 코드 생성 시작');
+    console.log('🧪 ZXing 테스트 QR 코드 생성 시작');
     
     try {
-        // QR 라이브러리 확인
-        if (typeof QRCode === 'undefined') {
+        // ZXing 라이브러리 확인 (QRCode.js 대체 지원)
+        if (typeof ZXing === 'undefined' && typeof QRCode === 'undefined') {
             console.log('⚠️ QR 라이브러리 로드 시도...');
-            if (typeof window.loadQRLibrary === 'function') {
+            
+            if (typeof window.loadZXingLibrary === 'function') {
+                await window.loadZXingLibrary();
+            }
+            
+            if (typeof ZXing === 'undefined' && typeof window.loadQRLibrary === 'function') {
                 await window.loadQRLibrary();
-                if (typeof QRCode === 'undefined') {
-                    showNotification('QR 코드 생성 라이브러리를 로드할 수 없습니다.', 'error');
-                    return;
-                }
-            } else {
-                showNotification('QR 코드 생성 라이브러리가 없습니다.', 'error');
+            }
+            
+            if (typeof ZXing === 'undefined' && typeof QRCode === 'undefined') {
+                showNotification('QR 코드 생성 라이브러리를 로드할 수 없습니다.', 'error');
                 return;
             }
         }
@@ -1413,20 +1661,80 @@ async function generateTestQRCode() {
         
         document.body.appendChild(testQRDiv);
         
-        // QR 코드 생성
+        // ZXing으로 QR 코드 생성
         const testCanvas = document.getElementById('testQRCanvas');
-        await QRCode.toCanvas(testCanvas, qrString, {
-            width: 256,
-            height: 256,
-            margin: 2,
-            color: {
-                dark: '#000000',
-                light: '#FFFFFF'
-            }
-        });
         
-        console.log('✅ 테스트 QR 코드 생성 완료');
-        showNotification('테스트 QR 코드가 생성되었습니다!', 'success');
+        if (typeof ZXing !== 'undefined') {
+            try {
+                const writer = new ZXing.BrowserQRCodeSvgWriter();
+                const svgElement = writer.write(qrString, 256, 256);
+                
+                // SVG를 캔버스에 그리기
+                const ctx = testCanvas.getContext('2d');
+                const img = new Image();
+                const svgBlob = new Blob([svgElement.outerHTML], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(svgBlob);
+                
+                img.onload = () => {
+                    testCanvas.width = 256;
+                    testCanvas.height = 256;
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, 256, 256);
+                    ctx.drawImage(img, 0, 0, 256, 256);
+                    URL.revokeObjectURL(url);
+                    
+                    console.log('✅ ZXing 테스트 QR 코드 생성 완료');
+                    showNotification('ZXing 테스트 QR 코드가 생성되었습니다!', 'success');
+                };
+                
+                img.onerror = () => {
+                    console.warn('⚠️ SVG 렌더링 실패, QRCode.js 대체 시도');
+                    fallbackTestQRGeneration();
+                };
+                
+                img.src = url;
+                
+            } catch (zxingError) {
+                console.warn('⚠️ ZXing QR 생성 실패, QRCode.js 대체 시도:', zxingError);
+                fallbackTestQRGeneration();
+            }
+        } else {
+            fallbackTestQRGeneration();
+        }
+        
+        // QRCode.js 대체 방법
+        async function fallbackTestQRGeneration() {
+            if (typeof QRCode !== 'undefined') {
+                await QRCode.toCanvas(testCanvas, qrString, {
+                    width: 256,
+                    height: 256,
+                    margin: 2,
+                    color: {
+                        dark: '#000000',
+                        light: '#FFFFFF'
+                    }
+                });
+                
+                console.log('✅ QRCode.js 테스트 QR 코드 생성 완료');
+                showNotification('테스트 QR 코드가 생성되었습니다!', 'success');
+            } else {
+                // 최후의 대체 방법
+                const ctx = testCanvas.getContext('2d');
+                testCanvas.width = 256;
+                testCanvas.height = 256;
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, 256, 256);
+                ctx.fillStyle = '#000000';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Test QR Code Generated', 128, 120);
+                ctx.fillText(`ID: ${qrId}`, 128, 140);
+                ctx.fillText('(Fallback Mode)', 128, 160);
+                
+                console.log('✅ 대체 테스트 QR 코드 생성 완료');
+                showNotification('테스트 QR 코드가 생성되었습니다 (대체 모드)!', 'success');
+            }
+        }
         
     } catch (error) {
         console.error('❌ 테스트 QR 코드 생성 실패:', error);

@@ -318,28 +318,23 @@
         </div>
     </div>
 
-    <!-- QR 라이브러리 로더 (다중 CDN 지원) -->
+    <!-- ZXing 라이브러리 로더 (ZXing 기반) -->
     <script>
-        // QR 라이브러리 로드 상태 추적
-        window.qrLibraryLoaded = false;
-        window.jsQRLibraryLoaded = false;
-        window.qrLibraryLoadPromise = null;
-        window.jsQRLibraryLoadPromise = null;
+        // ZXing 라이브러리 로드 상태 추적
+        window.zxingLibraryLoaded = false;
+        window.zxingBrowserLoaded = false;
+        window.zxingLibraryLoadPromise = null;
+        window.zxingBrowserLoadPromise = null;
         
-        // 다중 CDN 소스 정의 (로컬 파일 우선)
-        const qrCDNSources = [
-            './qrcode.min.js',  // 로컬 파일 우선
-            'https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js',
-            'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js',
-            'https://cdn.skypack.dev/qrcode@1.5.3'
+        // ZXing CDN 소스 정의
+        const zxingLibrarySources = [
+            'https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js',
+            'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js'
         ];
         
-        const jsQRCDNSources = [
-            './jsqr.js',  // 로컬 파일 우선
-            'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js',
-            'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js'
+        const zxingBrowserSources = [
+            'https://unpkg.com/@zxing/browser@0.1.5/umd/index.min.js',
+            'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js'
         ];
         
         // 단일 스크립트 로드 함수
@@ -367,152 +362,177 @@
             });
         }
         
-        // QR 라이브러리 로드 함수
-        function loadQRLibrary() {
-            if (window.qrLibraryLoadPromise) {
-                return window.qrLibraryLoadPromise;
+        // ZXing 라이브러리 로드 함수
+        function loadZXingLibrary() {
+            if (window.zxingLibraryLoadPromise) {
+                return window.zxingLibraryLoadPromise;
             }
             
-            window.qrLibraryLoadPromise = new Promise(async (resolve, reject) => {
+            window.zxingLibraryLoadPromise = new Promise(async (resolve, reject) => {
                 // 이미 로드되었는지 확인
-                if (typeof QRCode !== 'undefined') {
-                    window.qrLibraryLoaded = true;
-                    console.log('✅ QRCode 라이브러리 이미 로드됨');
+                if (typeof ZXing !== 'undefined') {
+                    window.zxingLibraryLoaded = true;
+                    console.log('✅ ZXing 라이브러리 이미 로드됨');
                     resolve();
                     return;
                 }
                 
                 // 각 CDN 소스를 순차적으로 시도
-                for (let i = 0; i < qrCDNSources.length; i++) {
-                    const cdnUrl = qrCDNSources[i];
-                    console.log(`🔄 QRCode 라이브러리 로드 시도 (${i + 1}/${qrCDNSources.length}): ${cdnUrl}`);
+                for (let i = 0; i < zxingLibrarySources.length; i++) {
+                    const cdnUrl = zxingLibrarySources[i];
+                    console.log(`🔄 ZXing 라이브러리 로드 시도 (${i + 1}/${zxingLibrarySources.length}): ${cdnUrl}`);
                     
                     try {
                         await loadScript(cdnUrl);
                         
-                        // QRCode 객체가 실제로 사용가능한지 확인
-                        if (typeof QRCode !== 'undefined') {
-                            window.qrLibraryLoaded = true;
-                            console.log(`✅ QRCode 라이브러리 로드 성공: ${cdnUrl}`);
+                        // ZXing 객체가 실제로 사용가능한지 확인
+                        if (typeof ZXing !== 'undefined') {
+                            window.zxingLibraryLoaded = true;
+                            console.log(`✅ ZXing 라이브러리 로드 성공: ${cdnUrl}`);
                             resolve();
                             return;
                         } else {
-                            throw new Error('QRCode 객체 없음');
+                            throw new Error('ZXing 객체 없음');
                         }
                         
                     } catch (error) {
-                        console.warn(`❌ CDN ${i + 1} 실패:`, error.message);
+                        console.warn(`❌ ZXing CDN ${i + 1} 실패:`, error.message);
                         // 마지막 CDN도 실패하면 reject
-                        if (i === qrCDNSources.length - 1) {
-                            console.error('❌ 모든 QRCode CDN 소스 로드 실패');
-                            reject(new Error('QR 라이브러리 로드 실패: 모든 CDN 소스가 응답하지 않습니다'));
+                        if (i === zxingLibrarySources.length - 1) {
+                            console.error('❌ 모든 ZXing CDN 소스 로드 실패');
+                            reject(new Error('ZXing 라이브러리 로드 실패: 모든 CDN 소스가 응답하지 않습니다'));
                         }
                     }
                 }
             });
             
-            return window.qrLibraryLoadPromise;
+            return window.zxingLibraryLoadPromise;
         }
         
-        // jsQR 라이브러리 로드 함수
-        function loadJsQRLibrary() {
-            if (window.jsQRLibraryLoadPromise) {
-                return window.jsQRLibraryLoadPromise;
+        // ZXing Browser 라이브러리 로드 함수
+        function loadZXingBrowser() {
+            if (window.zxingBrowserLoadPromise) {
+                return window.zxingBrowserLoadPromise;
             }
             
-            window.jsQRLibraryLoadPromise = new Promise(async (resolve, reject) => {
+            window.zxingBrowserLoadPromise = new Promise(async (resolve, reject) => {
+                // ZXing 라이브러리가 먼저 로드되어야 함
+                if (!window.zxingLibraryLoaded) {
+                    await loadZXingLibrary();
+                }
+                
                 // 이미 로드되었는지 확인
-                if (typeof jsQR !== 'undefined') {
-                    window.jsQRLibraryLoaded = true;
-                    console.log('✅ jsQR 라이브러리 이미 로드됨');
+                if (typeof ZXingBrowser !== 'undefined') {
+                    window.zxingBrowserLoaded = true;
+                    console.log('✅ ZXing Browser 라이브러리 이미 로드됨');
                     resolve();
                     return;
                 }
                 
                 // 각 CDN 소스를 순차적으로 시도
-                for (let i = 0; i < jsQRCDNSources.length; i++) {
-                    const cdnUrl = jsQRCDNSources[i];
-                    console.log(`🔄 jsQR 라이브러리 로드 시도 (${i + 1}/${jsQRCDNSources.length}): ${cdnUrl}`);
+                for (let i = 0; i < zxingBrowserSources.length; i++) {
+                    const cdnUrl = zxingBrowserSources[i];
+                    console.log(`🔄 ZXing Browser 라이브러리 로드 시도 (${i + 1}/${zxingBrowserSources.length}): ${cdnUrl}`);
                     
                     try {
                         await loadScript(cdnUrl);
                         
-                        // jsQR 객체가 실제로 사용가능한지 확인
-                        if (typeof jsQR !== 'undefined') {
-                            window.jsQRLibraryLoaded = true;
-                            console.log(`✅ jsQR 라이브러리 로드 성공: ${cdnUrl}`);
+                        // ZXingBrowser 객체가 실제로 사용가능한지 확인
+                        if (typeof ZXingBrowser !== 'undefined') {
+                            window.zxingBrowserLoaded = true;
+                            console.log(`✅ ZXing Browser 라이브러리 로드 성공: ${cdnUrl}`);
                             resolve();
                             return;
                         } else {
-                            throw new Error('jsQR 객체 없음');
+                            throw new Error('ZXingBrowser 객체 없음');
                         }
                         
                     } catch (error) {
-                        console.warn(`❌ jsQR CDN ${i + 1} 실패:`, error.message);
-                        // 마지막 CDN도 실패하면 resolve (jsQR은 선택사항)
-                        if (i === jsQRCDNSources.length - 1) {
-                            console.warn('⚠️ jsQR 라이브러리 로드 실패 - QR 스캔 기능 비활성화');
-                            resolve(); // jsQR 실패해도 계속 진행
+                        console.warn(`❌ ZXing Browser CDN ${i + 1} 실패:`, error.message);
+                        // 마지막 CDN도 실패하면 resolve (Browser는 선택사항)
+                        if (i === zxingBrowserSources.length - 1) {
+                            console.warn('⚠️ ZXing Browser 라이브러리 로드 실패 - QR 스캔 기능 비활성화');
+                            resolve(); // Browser 실패해도 계속 진행
                         }
                     }
                 }
             });
             
-            return window.jsQRLibraryLoadPromise;
+            return window.zxingBrowserLoadPromise;
         }
         
-        // 전역 QR 라이브러리 대기 함수
-        window.waitForQRLibrary = async function() {
-            if (window.qrLibraryLoaded && typeof QRCode !== 'undefined') {
+        // 전역 ZXing 라이브러리 대기 함수
+        window.waitForZXingLibrary = async function() {
+            if (window.zxingLibraryLoaded && typeof ZXing !== 'undefined') {
                 return Promise.resolve();
             }
             
             try {
-                await loadQRLibrary();
+                await loadZXingLibrary();
                 return Promise.resolve();
             } catch (error) {
-                throw new Error('QR 라이브러리를 로드할 수 없습니다: ' + error.message);
+                throw new Error('ZXing 라이브러리를 로드할 수 없습니다: ' + error.message);
             }
         };
         
+        // 하위 호환성을 위한 함수
+        window.waitForQRLibrary = window.waitForZXingLibrary;
+        
         // 페이지 로드 시 라이브러리 로드
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('🚀 QR 라이브러리 로드 시작...');
+            console.log('🚀 ZXing 라이브러리 로드 시작...');
             
             try {
-                // QRCode 라이브러리 로드 (필수)
-                await loadQRLibrary();
-                console.log('🎉 QRCode 라이브러리 준비 완료');
+                // ZXing 라이브러리 로드 (필수)
+                await loadZXingLibrary();
+                console.log('🎉 ZXing 라이브러리 준비 완료');
                 
-                // jsQR 라이브러리 로드 (선택사항)
-                await loadJsQRLibrary();
-                if (window.jsQRLibraryLoaded) {
-                    console.log('🎉 jsQR 라이브러리 준비 완료');
+                // ZXing Browser 라이브러리 로드 (선택사항)
+                await loadZXingBrowser();
+                if (window.zxingBrowserLoaded) {
+                    console.log('🎉 ZXing Browser 라이브러리 준비 완료');
                 }
                 
                 // 디버깅 도구 제공
-                window.debugQR = {
-                    checkQRLibrary: () => {
-                        console.log('QRCode 상태:', typeof QRCode !== 'undefined' ? '✅ 로드됨' : '❌ 로드 안됨');
-                        console.log('jsQR 상태:', typeof jsQR !== 'undefined' ? '✅ 로드됨' : '❌ 로드 안됨');
+                window.debugZXing = {
+                    checkLibrary: () => {
+                        console.log('ZXing 상태:', typeof ZXing !== 'undefined' ? '✅ 로드됨' : '❌ 로드 안됨');
+                        console.log('ZXingBrowser 상태:', typeof ZXingBrowser !== 'undefined' ? '✅ 로드됨' : '❌ 로드 안됨');
                         return {
-                            qrcode: typeof QRCode !== 'undefined',
-                            jsqr: typeof jsQR !== 'undefined'
+                            zxing: typeof ZXing !== 'undefined',
+                            zxingBrowser: typeof ZXingBrowser !== 'undefined'
                         };
+                    },
+                    testQRGeneration: async () => {
+                        if (typeof ZXing !== 'undefined') {
+                            try {
+                                const writer = new ZXing.BrowserQRCodeSvgWriter();
+                                const svg = writer.write('Test QR Code', 200, 200);
+                                console.log('✅ ZXing QR 생성 테스트 성공');
+                                return svg;
+                            } catch (error) {
+                                console.error('❌ ZXing QR 생성 테스트 실패:', error);
+                            }
+                        } else {
+                            console.error('❌ ZXing 라이브러리가 로드되지 않음');
+                        }
                     }
                 };
                 
-                console.log('🛠️ 디버깅: debugQR.checkQRLibrary()를 사용해 QR 라이브러리 상태를 확인할 수 있습니다.');
+                // 하위 호환성
+                window.debugQR = window.debugZXing;
+                
+                console.log('🛠️ 디버깅: debugZXing.checkLibrary()를 사용해 ZXing 라이브러리 상태를 확인할 수 있습니다.');
                 
                 // QR 기능 준비 완료 알림
                 setTimeout(() => {
                     if (typeof showNotification === 'function') {
-                        showNotification('✅ QR 코드 기능이 준비되었습니다!', 'success');
+                        showNotification('✅ ZXing QR 코드 기능이 준비되었습니다!', 'success');
                     }
                 }, 1000);
                 
             } catch (error) {
-                console.error('💥 QR 라이브러리 로드 최종 실패:', error);
+                console.error('💥 ZXing 라이브러리 로드 최종 실패:', error);
                 // 사용자에게 알림
                 setTimeout(() => {
                     if (typeof showNotification === 'function') {
