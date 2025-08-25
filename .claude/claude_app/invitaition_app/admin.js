@@ -223,6 +223,9 @@ function loadSectionData(sectionName) {
         case 'guestbook':
             loadAdminGuestbookData();
             break;
+        case 'content':
+            loadContentData();
+            break;
         case 'qr':
             // QR 섹션은 별도 로드 없음
             break;
@@ -665,6 +668,289 @@ function formatDate(dateInput) {
         hour: '2-digit',
         minute: '2-digit'
     });
+}
+
+// 컨텐츠 관리 관련 함수들
+// ===============================
+
+// 컨텐츠 데이터 로드
+async function loadContentData() {
+    try {
+        let contentData = {};
+        let loadSource = 'default';
+        
+        // 먼저 localStorage에서 시도
+        try {
+            const localData = JSON.parse(localStorage.getItem('contentData') || '{}');
+            if (Object.keys(localData).length > 0) {
+                contentData = localData;
+                loadSource = 'localStorage';
+            }
+        } catch (localError) {
+            console.warn('localStorage 데이터 로드 실패:', localError);
+        }
+        
+        // Supabase에서 시도 (실패해도 localStorage 데이터 사용)
+        if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
+            try {
+                const supabaseData = await window.supabaseConfig.getContentData();
+                if (Object.keys(supabaseData).length > 0) {
+                    contentData = supabaseData;
+                    loadSource = 'supabase';
+                }
+            } catch (supabaseError) {
+                console.warn('Supabase 데이터 로드 실패, localStorage 사용:', supabaseError);
+            }
+        }
+        
+        // 기본값으로 현재 index.html 값들 설정
+        const defaultContent = {
+            heroImage: 'https://picsum.photos/400/300?random=1',
+            eventTitle: '2024 비즈니스 혁신 컨퍼런스',
+            eventSubtitle: '미래를 준비하는 리더들의 만남',
+            eventDate: '2024년 12월 15일 (일) 오후 2시',
+            eventLocation: '서울 강남구 컨벤션센터',
+            greetingContent: '안녕하세요!\n\n급변하는 비즈니스 환경에서 혁신적인 사고와 전략이 그 어느 때보다 중요한 시점입니다.\n\n이번 컨퍼런스에서는 업계 최고의 전문가들과 함께 미래 비즈니스 트렌드를 살펴보고, 실무에 바로 적용할 수 있는 인사이트를 공유하고자 합니다.\n\n여러분의 소중한 참석을 기다리겠습니다.',
+            greetingSignature: '주최자 일동',
+            eventDetailTime: '2024년 12월 15일 (일)\n오후 2:00 ~ 오후 6:00',
+            eventDetailLocation: '서울 강남구 컨벤션센터\n대강당 (3층)',
+            eventTarget: '기업 임직원, 창업가\n비즈니스 관계자',
+            eventFee: '무료 (사전 등록 필수)',
+            locationAddress: '서울특별시 강남구 테헤란로 123\n컨벤션센터 3층 대강당',
+            subwayInfo: '지하철 2호선 강남역 3번 출구 도보 5분',
+            busInfo: '버스 146, 360, 740 강남역 하차',
+            parkingInfo: '지하 주차장 이용 가능 (2시간 무료)',
+            contactPhone: '02-1234-5678',
+            contactEmail: 'info@conference.com',
+            donationMessage: '후원을 통해 더 나은 행사를 만들어가겠습니다.',
+            bankName: '국민은행',
+            accountNumber: '123456-78-901234',
+            accountHolder: '컨퍼런스주최자',
+            galleryImages: [
+                'https://picsum.photos/300/200?random=2',
+                'https://picsum.photos/300/200?random=3',
+                'https://picsum.photos/300/200?random=4',
+                'https://picsum.photos/300/200?random=5'
+            ]
+        };
+        
+        // 저장된 데이터와 기본값 병합
+        contentData = { ...defaultContent, ...contentData };
+        
+        // 폼 필드에 데이터 설정
+        populateContentForm(contentData);
+        
+        // 로드 성공 알림
+        console.log(`컨텐츠 데이터 로드 완료 (${loadSource})`);
+        if (loadSource !== 'default') {
+            showNotification(`컨텐츠 데이터를 ${loadSource === 'supabase' ? '데이터베이스' : '로컬'}에서 불러왔습니다.`, 'success');
+        }
+        
+    } catch (error) {
+        console.error('컨텐츠 데이터 로드 실패:', error);
+        showNotification('컨텐츠 데이터를 불러오는 중 오류가 발생했습니다. 기본값을 사용합니다.', 'warning');
+        
+        // 기본값으로 폼 초기화
+        try {
+            populateContentForm({});
+        } catch (formError) {
+            console.error('폼 초기화 실패:', formError);
+        }
+    }
+}
+
+// 폼에 컨텐츠 데이터 설정
+function populateContentForm(contentData) {
+    // 각 입력 필드에 데이터 설정
+    Object.keys(contentData).forEach(key => {
+        const element = document.getElementById(key);
+        if (element && key !== 'galleryImages') {
+            element.value = contentData[key] || '';
+        }
+    });
+    
+    // 갤러리 이미지 별도 처리
+    if (contentData.galleryImages) {
+        loadGalleryImages(contentData.galleryImages);
+    }
+}
+
+// 갤러리 이미지 로드
+function loadGalleryImages(images) {
+    const galleryContainer = document.getElementById('galleryImages');
+    if (!galleryContainer) return;
+    
+    galleryContainer.innerHTML = images.map((imageUrl, index) => `
+        <div class="gallery-item-editor">
+            <img src="${imageUrl}" alt="갤러리 이미지 ${index + 1}">
+            <div class="gallery-item-controls">
+                <input type="url" value="${imageUrl}" onchange="updateGalleryImage(${index}, this.value)">
+                <button class="btn-small btn-delete" onclick="removeGalleryImage(${index})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 갤러리 이미지 추가
+function addGalleryImage() {
+    const imageUrl = prompt('이미지 URL을 입력하세요:');
+    if (imageUrl) {
+        const currentContent = getCurrentContentData();
+        if (!currentContent.galleryImages) {
+            currentContent.galleryImages = [];
+        }
+        currentContent.galleryImages.push(imageUrl);
+        loadGalleryImages(currentContent.galleryImages);
+        showNotification('갤러리 이미지가 추가되었습니다.', 'success');
+    }
+}
+
+// 갤러리 이미지 업데이트
+function updateGalleryImage(index, newUrl) {
+    const currentContent = getCurrentContentData();
+    if (currentContent.galleryImages && currentContent.galleryImages[index]) {
+        currentContent.galleryImages[index] = newUrl;
+        showNotification('갤러리 이미지가 업데이트되었습니다.', 'success');
+    }
+}
+
+// 갤러리 이미지 제거
+function removeGalleryImage(index) {
+    if (confirm('이 이미지를 삭제하시겠습니까?')) {
+        const currentContent = getCurrentContentData();
+        if (currentContent.galleryImages) {
+            currentContent.galleryImages.splice(index, 1);
+            loadGalleryImages(currentContent.galleryImages);
+            showNotification('갤러리 이미지가 삭제되었습니다.', 'success');
+        }
+    }
+}
+
+// 현재 폼 데이터 가져오기
+function getCurrentContentData() {
+    const formData = {};
+    
+    // 일반 입력 필드들
+    const fieldIds = [
+        'heroImage', 'eventTitle', 'eventSubtitle', 'eventDate', 'eventLocation',
+        'greetingContent', 'greetingSignature', 'eventDetailTime', 'eventDetailLocation',
+        'eventTarget', 'eventFee', 'locationAddress', 'subwayInfo', 'busInfo', 
+        'parkingInfo', 'contactPhone', 'contactEmail', 'donationMessage', 
+        'bankName', 'accountNumber', 'accountHolder'
+    ];
+    
+    fieldIds.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            formData[id] = element.value;
+        }
+    });
+    
+    // 갤러리 이미지들
+    const galleryContainer = document.getElementById('galleryImages');
+    if (galleryContainer) {
+        const imageInputs = galleryContainer.querySelectorAll('input[type="url"]');
+        formData.galleryImages = Array.from(imageInputs).map(input => input.value);
+    }
+    
+    return formData;
+}
+
+// 모든 컨텐츠 저장
+async function saveAllContent() {
+    try {
+        const contentData = getCurrentContentData();
+        
+        // 항상 localStorage에 저장 (백업용)
+        localStorage.setItem('contentData', JSON.stringify(contentData));
+        
+        // Supabase 저장 시도 (실패해도 계속 진행)
+        let supabaseSaved = false;
+        if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
+            try {
+                await window.supabaseConfig.saveContentData(contentData);
+                supabaseSaved = true;
+                console.log('Supabase 저장 성공');
+            } catch (supabaseError) {
+                console.warn('Supabase 저장 실패, localStorage로 백업됨:', supabaseError);
+            }
+        }
+        
+        // 성공 메시지
+        if (supabaseSaved) {
+            showNotification('모든 컨텐츠가 저장되었습니다. (데이터베이스)', 'success');
+        } else {
+            showNotification('모든 컨텐츠가 로컬에 저장되었습니다. (오프라인 모드)', 'info');
+        }
+        
+        // index.html 페이지도 업데이트
+        updateIndexPageContent(contentData);
+        
+    } catch (error) {
+        console.error('컨텐츠 저장 실패:', error);
+        showNotification('컨텐츠 저장 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// index.html 페이지 컨텐츠 업데이트 (postMessage 사용)
+function updateIndexPageContent(contentData) {
+    try {
+        // 만약 같은 도메인의 index.html이 열려있다면 postMessage로 업데이트 알림
+        if (window.opener) {
+            window.opener.postMessage({
+                type: 'contentUpdate',
+                data: contentData
+            }, '*');
+        }
+        
+        // localStorage에 업데이트 플래그 설정
+        localStorage.setItem('contentUpdated', 'true');
+        
+    } catch (error) {
+        console.error('페이지 업데이트 알림 실패:', error);
+    }
+}
+
+// 모든 컨텐츠 초기화
+function resetAllContent() {
+    if (confirm('모든 컨텐츠를 초기값으로 되돌리시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+        if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
+            // DB에서 컨텐츠 삭제
+            window.supabaseConfig.resetContentData();
+        }
+        
+        // 로컬 스토리지에서 컨텐츠 삭제
+        localStorage.removeItem('contentData');
+        
+        // 페이지 새로고침하여 기본값 로드
+        loadContentData();
+        showNotification('모든 컨텐츠가 초기화되었습니다.', 'info');
+    }
+}
+
+// 이미지 업로드 (실제로는 파일 선택 다이얼로그)
+function uploadImage(fieldId) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    
+    input.onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // 실제로는 서버에 업로드해야 하지만, 데모용으로 ObjectURL 사용
+            const imageUrl = URL.createObjectURL(file);
+            
+            const fieldElement = document.getElementById(fieldId);
+            if (fieldElement) {
+                fieldElement.value = imageUrl;
+                showNotification('이미지가 업로드되었습니다. (데모용 - 임시 URL)', 'success');
+            }
+        }
+    };
+    
+    input.click();
 }
 
 // 알림 표시 함수

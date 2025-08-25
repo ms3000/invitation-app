@@ -85,6 +85,10 @@
                     <i class="fas fa-comments"></i>
                     방명록 관리
                 </button>
+                <button class="quick-nav-btn" onclick="showSection('content')">
+                    <i class="fas fa-edit"></i>
+                    컨텐츠 관리
+                </button>
                 <button class="quick-nav-btn" onclick="showSection('qr')">
                     <i class="fas fa-qrcode"></i>
                     QR 관리
@@ -231,6 +235,171 @@
                 
                 <div class="admin-guestbook-list" id="adminGuestbookList">
                     <!-- 방명록 데이터가 로드됨 -->
+                </div>
+            </section>
+
+            <!-- 컨텐츠 관리 섹션 -->
+            <section id="contentSection" class="admin-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-edit"></i> 컨텐츠 관리</h2>
+                    <div class="content-controls">
+                        <button class="btn-save-all" onclick="saveAllContent()">
+                            <i class="fas fa-save"></i>
+                            모두 저장
+                        </button>
+                        <button class="btn-reset-all" onclick="resetAllContent()">
+                            <i class="fas fa-undo"></i>
+                            모두 초기화
+                        </button>
+                    </div>
+                </div>
+
+                <div class="content-sections">
+                    <!-- 헤더 섹션 -->
+                    <div class="content-card">
+                        <h3><i class="fas fa-image"></i> 헤더 섹션</h3>
+                        <div class="content-form">
+                            <div class="form-group">
+                                <label>컨퍼런스 이미지 URL</label>
+                                <input type="url" id="heroImage" placeholder="https://...">
+                                <button class="btn-upload-image" onclick="uploadImage('heroImage')">
+                                    <i class="fas fa-upload"></i>
+                                    이미지 업로드
+                                </button>
+                            </div>
+                            <div class="form-group">
+                                <label>행사 제목</label>
+                                <input type="text" id="eventTitle" placeholder="2024 비즈니스 혁신 컨퍼런스">
+                            </div>
+                            <div class="form-group">
+                                <label>행사 부제목</label>
+                                <input type="text" id="eventSubtitle" placeholder="미래를 준비하는 리더들의 만남">
+                            </div>
+                            <div class="form-group">
+                                <label>행사 날짜</label>
+                                <input type="text" id="eventDate" placeholder="2024년 12월 15일 (일) 오후 2시">
+                            </div>
+                            <div class="form-group">
+                                <label>행사 장소</label>
+                                <input type="text" id="eventLocation" placeholder="서울 강남구 컨벤션센터">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 인사말 섹션 -->
+                    <div class="content-card">
+                        <h3><i class="fas fa-heart"></i> 인사말 섹션</h3>
+                        <div class="content-form">
+                            <div class="form-group">
+                                <label>인사말 내용</label>
+                                <textarea id="greetingContent" rows="8" placeholder="인사말을 입력하세요..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>서명</label>
+                                <input type="text" id="greetingSignature" placeholder="주최자 일동">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 행사 정보 섹션 -->
+                    <div class="content-card">
+                        <h3><i class="fas fa-info-circle"></i> 행사 정보 섹션</h3>
+                        <div class="content-form">
+                            <div class="form-group">
+                                <label>상세 일시</label>
+                                <textarea id="eventDetailTime" rows="2" placeholder="2024년 12월 15일 (일)&#10;오후 2:00 ~ 오후 6:00"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>상세 장소</label>
+                                <textarea id="eventDetailLocation" rows="2" placeholder="서울 강남구 컨벤션센터&#10;대강당 (3층)"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>참석 대상</label>
+                                <textarea id="eventTarget" rows="2" placeholder="기업 임직원, 창업가&#10;비즈니스 관계자"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>참가비</label>
+                                <input type="text" id="eventFee" placeholder="무료 (사전 등록 필수)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 오시는 길 섹션 -->
+                    <div class="content-card">
+                        <h3><i class="fas fa-route"></i> 오시는 길 섹션</h3>
+                        <div class="content-form">
+                            <div class="form-group">
+                                <label>주소</label>
+                                <textarea id="locationAddress" rows="2" placeholder="서울특별시 강남구 테헤란로 123&#10;컨벤션센터 3층 대강당"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>지하철 정보</label>
+                                <input type="text" id="subwayInfo" placeholder="지하철 2호선 강남역 3번 출구 도보 5분">
+                            </div>
+                            <div class="form-group">
+                                <label>버스 정보</label>
+                                <input type="text" id="busInfo" placeholder="버스 146, 360, 740 강남역 하차">
+                            </div>
+                            <div class="form-group">
+                                <label>주차장 정보</label>
+                                <input type="text" id="parkingInfo" placeholder="지하 주차장 이용 가능 (2시간 무료)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 갤러리 섹션 -->
+                    <div class="content-card">
+                        <h3><i class="fas fa-images"></i> 갤러리 섹션</h3>
+                        <div class="content-form">
+                            <div class="gallery-manager">
+                                <div class="gallery-images" id="galleryImages">
+                                    <!-- 갤러리 이미지들이 동적으로 추가됨 -->
+                                </div>
+                                <button class="btn-add-image" onclick="addGalleryImage()">
+                                    <i class="fas fa-plus"></i>
+                                    이미지 추가
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 연락처 섹션 -->
+                    <div class="content-card">
+                        <h3><i class="fas fa-phone"></i> 연락처 섹션</h3>
+                        <div class="content-form">
+                            <div class="form-group">
+                                <label>전화번호</label>
+                                <input type="tel" id="contactPhone" placeholder="02-1234-5678">
+                            </div>
+                            <div class="form-group">
+                                <label>이메일</label>
+                                <input type="email" id="contactEmail" placeholder="info@conference.com">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 계좌정보 섹션 -->
+                    <div class="content-card">
+                        <h3><i class="fas fa-gift"></i> 계좌정보 섹션</h3>
+                        <div class="content-form">
+                            <div class="form-group">
+                                <label>후원 안내 메시지</label>
+                                <textarea id="donationMessage" rows="2" placeholder="후원을 통해 더 나은 행사를 만들어가겠습니다."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>은행명</label>
+                                <input type="text" id="bankName" placeholder="국민은행">
+                            </div>
+                            <div class="form-group">
+                                <label>계좌번호</label>
+                                <input type="text" id="accountNumber" placeholder="123456-78-901234">
+                            </div>
+                            <div class="form-group">
+                                <label>예금주</label>
+                                <input type="text" id="accountHolder" placeholder="컨퍼런스주최자">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 

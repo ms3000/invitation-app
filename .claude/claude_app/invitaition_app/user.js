@@ -13,6 +13,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Supabase 초기화 시도
     await initializeSupabase();
     
+    // 동적 컨텐츠 로드
+    await loadDynamicContent();
+    
     // 방명록 메시지 로드
     await loadGuestbookMessages();
     
@@ -24,11 +27,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // 실시간 구독 설정
     setupRealtimeSubscriptions();
+    
+    // postMessage 리스너 설정 (관리자 페이지에서 업데이트 알림용)
+    setupPostMessageListener();
 });
 
-// 길찾기 기능
+// 길찾기 기능 (동적 주소 지원)
 function openNavigation() {
-    const address = "서울특별시 강남구 테헤란로 123";
+    const address = window.dynamicAddress || "서울특별시 강남구 테헤란로 123";
     
     // 모바일 디바이스 감지
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -562,6 +568,295 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// 동적 컨텐츠 로드
+async function loadDynamicContent() {
+    try {
+        let contentData = {};
+        let loadSource = 'none';
+        
+        // 먼저 localStorage에서 시도
+        try {
+            const localData = JSON.parse(localStorage.getItem('contentData') || '{}');
+            if (Object.keys(localData).length > 0) {
+                contentData = localData;
+                loadSource = 'localStorage';
+                console.log('localStorage에서 컨텐츠 로드:', contentData);
+            }
+        } catch (localError) {
+            console.warn('localStorage 데이터 로드 실패:', localError);
+        }
+        
+        // Supabase에서 시도 (실패해도 localStorage 데이터 사용)
+        if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
+            try {
+                const supabaseData = await window.supabaseConfig.getContentData();
+                if (Object.keys(supabaseData).length > 0) {
+                    contentData = supabaseData;
+                    loadSource = 'supabase';
+                    console.log('Supabase에서 컨텐츠 로드:', contentData);
+                }
+            } catch (supabaseError) {
+                console.warn('Supabase 데이터 로드 실패, localStorage 사용:', supabaseError);
+            }
+        }
+        
+        // 컨텐츠가 있으면 페이지에 적용
+        if (Object.keys(contentData).length > 0) {
+            console.log('페이지 컨텐츠 업데이트 시작:', loadSource);
+            updatePageContent(contentData);
+            console.log('페이지 컨텐츠 업데이트 완료');
+        } else {
+            console.log('로드할 컨텐츠 데이터가 없음');
+        }
+        
+    } catch (error) {
+        console.error('동적 컨텐츠 로드 실패:', error);
+    }
+}
+
+// 페이지 컨텐츠 업데이트
+function updatePageContent(contentData) {
+    console.log('updatePageContent 호출됨:', contentData);
+    
+    // 헤더 섹션
+    if (contentData.heroImage) {
+        const heroImg = document.querySelector('.hero-image img');
+        if (heroImg) {
+            console.log('Hero 이미지 업데이트:', contentData.heroImage);
+            heroImg.src = contentData.heroImage;
+        } else {
+            console.warn('Hero 이미지 엘리먼트를 찾을 수 없음');
+        }
+    }
+    
+    if (contentData.eventTitle) {
+        const titleEl = document.querySelector('.event-title');
+        if (titleEl) {
+            console.log('제목 업데이트:', contentData.eventTitle);
+            titleEl.textContent = contentData.eventTitle;
+        } else {
+            console.warn('제목 엘리먼트를 찾을 수 없음');
+        }
+    }
+    
+    if (contentData.eventSubtitle) {
+        const subtitleEl = document.querySelector('.event-subtitle');
+        if (subtitleEl) {
+            console.log('부제목 업데이트:', contentData.eventSubtitle);
+            subtitleEl.textContent = contentData.eventSubtitle;
+        } else {
+            console.warn('부제목 엘리먼트를 찾을 수 없음');
+        }
+    }
+    
+    if (contentData.eventDate) {
+        const dateEl = document.querySelector('.event-date span');
+        if (dateEl) {
+            console.log('날짜 업데이트:', contentData.eventDate);
+            dateEl.textContent = contentData.eventDate;
+        } else {
+            console.warn('날짜 엘리먼트를 찾을 수 없음');
+        }
+    }
+    
+    if (contentData.eventLocation) {
+        const locationEl = document.querySelector('.event-location span');
+        if (locationEl) {
+            console.log('장소 업데이트:', contentData.eventLocation);
+            locationEl.textContent = contentData.eventLocation;
+        } else {
+            console.warn('장소 엘리먼트를 찾을 수 없음');
+        }
+    }
+    
+    // 인사말 섹션
+    if (contentData.greetingContent) {
+        const greetingEl = document.querySelector('.greeting-content');
+        if (greetingEl) {
+            const paragraphs = contentData.greetingContent.split('\n\n');
+            const signaturePart = contentData.greetingSignature ? 
+                `<div class="signature"><p>${contentData.greetingSignature}</p></div>` : '';
+            
+            greetingEl.innerHTML = paragraphs.map(p => p ? `<p>${p}</p>` : '').join('') + signaturePart;
+        }
+    }
+    
+    // 행사 정보 섹션
+    if (contentData.eventDetailTime) {
+        const timeEl = document.querySelector('.info-item:nth-child(1) p');
+        if (timeEl) timeEl.innerHTML = contentData.eventDetailTime.replace(/\n/g, '<br>');
+    }
+    
+    if (contentData.eventDetailLocation) {
+        const locationEl = document.querySelector('.info-item:nth-child(2) p');
+        if (locationEl) locationEl.innerHTML = contentData.eventDetailLocation.replace(/\n/g, '<br>');
+    }
+    
+    if (contentData.eventTarget) {
+        const targetEl = document.querySelector('.info-item:nth-child(3) p');
+        if (targetEl) targetEl.innerHTML = contentData.eventTarget.replace(/\n/g, '<br>');
+    }
+    
+    if (contentData.eventFee) {
+        const feeEl = document.querySelector('.info-item:nth-child(4) p');
+        if (feeEl) feeEl.textContent = contentData.eventFee;
+    }
+    
+    // 오시는 길 섹션
+    if (contentData.locationAddress) {
+        const addressEl = document.querySelector('.address p');
+        if (addressEl) addressEl.innerHTML = contentData.locationAddress.replace(/\n/g, '<br>');
+    }
+    
+    if (contentData.subwayInfo) {
+        const subwayEl = document.querySelector('.transport-item:nth-child(1) span');
+        if (subwayEl) subwayEl.textContent = contentData.subwayInfo;
+    }
+    
+    if (contentData.busInfo) {
+        const busEl = document.querySelector('.transport-item:nth-child(2) span');
+        if (busEl) busEl.textContent = contentData.busInfo;
+    }
+    
+    if (contentData.parkingInfo) {
+        const parkingEl = document.querySelector('.transport-item:nth-child(3) span');
+        if (parkingEl) parkingEl.textContent = contentData.parkingInfo;
+    }
+    
+    // 갤러리 섹션
+    if (contentData.galleryImages && Array.isArray(contentData.galleryImages)) {
+        const galleryGrid = document.querySelector('.gallery-grid');
+        if (galleryGrid && contentData.galleryImages.length > 0) {
+            galleryGrid.innerHTML = contentData.galleryImages.map((imageUrl, index) => `
+                <div class="gallery-item">
+                    <img src="${imageUrl}" alt="갤러리 이미지 ${index + 1}">
+                </div>
+            `).join('');
+            
+            // 갤러리 모달 재설정
+            setupGalleryModal();
+        }
+    }
+    
+    // 연락처 섹션
+    if (contentData.contactPhone) {
+        const phoneBtn = document.querySelector('[onclick*="makeCall"]');
+        if (phoneBtn) {
+            phoneBtn.onclick = () => makeCall(contentData.contactPhone);
+            const phoneSpan = phoneBtn.querySelector('span:last-child');
+            if (phoneSpan) phoneSpan.textContent = contentData.contactPhone;
+        }
+    }
+    
+    if (contentData.contactEmail) {
+        const emailBtn = document.querySelector('[onclick*="sendEmail"]');
+        if (emailBtn) {
+            emailBtn.onclick = () => sendEmail(contentData.contactEmail);
+            const emailSpan = emailBtn.querySelector('span:last-child');
+            if (emailSpan) emailSpan.textContent = contentData.contactEmail;
+        }
+    }
+    
+    // 계좌정보 섹션
+    if (contentData.donationMessage) {
+        const donationText = document.querySelector('.donation-content p');
+        if (donationText) donationText.textContent = contentData.donationMessage;
+    }
+    
+    if (contentData.bankName && contentData.accountNumber) {
+        const bankNameEl = document.querySelector('.bank-name');
+        const accountNumberEl = document.querySelector('.account-number');
+        const copyBtn = document.querySelector('[onclick*="copyAccount"]');
+        
+        if (bankNameEl) bankNameEl.textContent = contentData.bankName;
+        if (accountNumberEl) accountNumberEl.textContent = contentData.accountNumber;
+        if (copyBtn) copyBtn.onclick = () => copyAccount(contentData.accountNumber);
+    }
+    
+    if (contentData.accountHolder) {
+        const holderEl = document.querySelector('.account-holder');
+        if (holderEl) holderEl.textContent = `예금주: ${contentData.accountHolder}`;
+    }
+    
+    // 길찾기 주소 업데이트
+    if (contentData.locationAddress) {
+        // 첫 번째 줄을 주소로 사용
+        const firstLine = contentData.locationAddress.split('\n')[0];
+        if (firstLine) {
+            // openNavigation 함수의 주소를 동적으로 업데이트하기 위해 전역 변수 설정
+            window.dynamicAddress = firstLine;
+        }
+    }
+}
+
+// postMessage 리스너 설정 (관리자 페이지에서의 실시간 업데이트용)
+function setupPostMessageListener() {
+    window.addEventListener('message', function(event) {
+        console.log('postMessage 수신:', event.data);
+        if (event.data.type === 'contentUpdate') {
+            updatePageContent(event.data.data);
+            showNotification('페이지 컨텐츠가 업데이트되었습니다.', 'info');
+        }
+    });
+    
+    // localStorage 변경 감지 (다른 탭에서 업데이트 시)
+    window.addEventListener('storage', function(event) {
+        console.log('localStorage 변경 감지:', event.key, event.newValue);
+        if (event.key === 'contentData') {
+            // contentData가 직접 변경되었을 때
+            console.log('contentData 변경 감지, 페이지 업데이트');
+            loadDynamicContent();
+            showNotification('페이지 컨텐츠가 업데이트되었습니다.', 'info');
+        } else if (event.key === 'contentUpdated' && event.newValue === 'true') {
+            // 업데이트 플래그가 설정되었을 때
+            console.log('contentUpdated 플래그 감지, 페이지 업데이트');
+            localStorage.removeItem('contentUpdated');
+            loadDynamicContent();
+            showNotification('페이지 컨텐츠가 업데이트되었습니다.', 'info');
+        }
+    });
+    
+    // 주기적으로 localStorage 체크 (브라우저 호환성 대비)
+    setInterval(() => {
+        const updateFlag = localStorage.getItem('contentUpdated');
+        if (updateFlag === 'true') {
+            console.log('주기적 체크: contentUpdated 플래그 발견');
+            localStorage.removeItem('contentUpdated');
+            loadDynamicContent();
+        }
+    }, 1000);
+}
+
+// 길찾기 기능 (동적 주소 지원)
+function openNavigationDynamic() {
+    const address = window.dynamicAddress || "서울특별시 강남구 테헤란로 123";
+    
+    // 모바일 디바이스 감지
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+        // 카카오맵 앱이 있으면 카카오맵으로, 없으면 구글맵으로
+        const kakaoUrl = `kakaomap://search?q=${encodeURIComponent(address)}`;
+        const googleUrl = `https://maps.google.com/maps?q=${encodeURIComponent(address)}`;
+        
+        // 카카오맵 앱 실행 시도
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = kakaoUrl;
+        document.body.appendChild(iframe);
+        
+        // 1초 후 카카오맵이 실행되지 않았으면 구글맵으로
+        setTimeout(() => {
+            document.body.removeChild(iframe);
+            window.open(googleUrl, '_blank');
+        }, 1000);
+    } else {
+        // 데스크탑에서는 구글맵 웹 버전
+        const googleUrl = `https://maps.google.com/maps?q=${encodeURIComponent(address)}`;
+        window.open(googleUrl, '_blank');
+    }
 }
 
 // 알림 표시 함수

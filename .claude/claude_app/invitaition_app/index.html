@@ -486,5 +486,21 @@
     <!-- 메인 스크립트 -->
     <script src="supabase-config.js"></script>
     <script src="user.js"></script>
+    
+    <!-- 개발용 테스트 스크립트 (프로덕션에서는 제거) -->
+    <script src="test-content-sync.js"></script>
+    
+    <!-- 페이지 로드 후 컨텐츠 강제 리로드 -->
+    <script>
+        // 페이지 로드 완료 후 한 번 더 컨텐츠 로드 시도
+        window.addEventListener('load', function() {
+            console.log('페이지 로드 완료, 추가 컨텐츠 로드 시도');
+            setTimeout(() => {
+                if (typeof loadDynamicContent === 'function') {
+                    loadDynamicContent();
+                }
+            }, 2000); // 2초 후 재시도
+        });
+    </script>
 </body>
 </html>

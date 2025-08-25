@@ -264,6 +264,216 @@ class SupabaseConfig {
         }
     }
 
+    // 컨텐츠 데이터 저장
+    async saveContentData(contentData) {
+        if (!this.isInitialized) {
+            throw new Error('Supabase가 초기화되지 않았습니다.');
+        }
+
+        try {
+            // 이벤트 ID가 없으면 기본 이벤트 생성
+            if (!this.currentEventId) {
+                const defaultEvent = await this.createDefaultEvent();
+                this.currentEventId = defaultEvent.id;
+            }
+
+            // 기존 컨텐츠 데이터 확인
+            const { data: existing, error: selectError } = await this.supabase
+                .from('event_content')
+                .select('id')
+                .eq('event_id', this.currentEventId)
+                .maybeSingle(); // single() 대신 maybeSingle() 사용
+
+            if (selectError) {
+                console.warn('기존 컨텐츠 조회 실패, 새로 생성:', selectError);
+            }
+
+            const contentRecord = {
+                event_id: this.currentEventId,
+                content_data: contentData,
+                updated_at: new Date().toISOString()
+            };
+
+            let result;
+            if (existing && existing.id) {
+                // 업데이트
+                const { data, error } = await this.supabase
+                    .from('event_content')
+                    .update(contentRecord)
+                    .eq('id', existing.id)
+                    .select();
+
+                if (error) throw error;
+                result = data;
+            } else {
+                // 삽입
+                const { data, error } = await this.supabase
+                    .from('event_content')
+                    .insert([contentRecord])
+                    .select();
+
+                if (error) throw error;
+                result = data;
+            }
+
+            console.log('컨텐츠 데이터 저장 성공:', result);
+            return result[0];
+        } catch (error) {
+            console.error('컨텐츠 데이터 저장 실패:', error);
+            // 테이블이 없을 경우를 대비해 더 구체적인 오류 메시지 제공
+            if (error.message && error.message.includes('404')) {
+                throw new Error('데이터베이스 테이블이 설정되지 않았습니다. 로컬 저장소를 사용합니다.');
+            }
+            throw error;
+        }
+    }
+
+    // 기본 이벤트 생성
+    async createDefaultEvent() {
+        if (!this.isInitialized) {
+            throw new Error('Supabase가 초기화되지 않았습니다.');
+        }
+
+        try {
+            const { data, error } = await this.supabase
+                .from('events')
+                .insert([{
+                    title: '기본 컨퍼런스 이벤트',
+                    is_active: true
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            console.log('기본 이벤트 생성:', data);
+            return data;
+        } catch (error) {
+            console.error('기본 이벤트 생성 실패:', error);
+            throw error;
+        }
+    }
+
+    // 컨텐츠 데이터 조회
+    async getContentData() {
+        if (!this.isInitialized) {
+            return {};
+        }
+
+        try {
+            // 이벤트 ID가 없으면 빈 객체 반환
+            if (!this.currentEventId) {
+                console.log('이벤트 ID가 없어 빈 컨텐츠 반환');
+                return {};
+            }
+
+            const { data, error } = await this.supabase
+                .from('event_content')
+                .select('content_data')
+                .eq('event_id', this.currentEventId)
+                .maybeSingle(); // single() 대신 maybeSingle() 사용
+
+            if (error) {
+                console.warn('컨텐츠 데이터 조회 실패:', error);
+                return {};
+            }
+
+            if (!data) {
+                console.log('저장된 컨텐츠 데이터가 없음');
+                return {};
+            }
+
+            console.log('컨텐츠 데이터 조회 성공:', data);
+            return data.content_data || {};
+        } catch (error) {
+            console.error('컨텐츠 데이터 조회 실패:', error);
+            return {};
+        }
+    }
+
+    // 컨텐츠 데이터 초기화
+    async resetContentData() {
+        if (!this.isInitialized || !this.currentEventId) {
+            throw new Error('Supabase가 초기화되지 않았거나 이벤트 ID가 없습니다.');
+        }
+
+        try {
+            const { error } = await this.supabase
+                .from('event_content')
+                .delete()
+                .eq('event_id', this.currentEventId);
+
+            if (error) throw error;
+
+            console.log('컨텐츠 데이터 초기화 완료');
+            return true;
+        } catch (error) {
+            console.error('컨텐츠 데이터 초기화 실패:', error);
+            throw error;
+        }
+    }
+
+    // 갤러리 이미지 업로드
+    async uploadGalleryImage(file, fileName) {
+        if (!this.isInitialized) {
+            throw new Error('Supabase가 초기화되지 않았습니다.');
+        }
+
+        try {
+            const fileExt = fileName.split('.').pop();
+            const filePath = `gallery/${this.currentEventId}/${Date.now()}.${fileExt}`;
+
+            const { data, error } = await this.supabase.storage
+                .from('event-images')
+                .upload(filePath, file);
+
+            if (error) throw error;
+
+            // 공개 URL 생성
+            const { data: urlData } = this.supabase.storage
+                .from('event-images')
+                .getPublicUrl(filePath);
+
+            console.log('이미지 업로드 성공:', urlData.publicUrl);
+            return urlData.publicUrl;
+        } catch (error) {
+            console.error('이미지 업로드 실패:', error);
+            throw error;
+        }
+    }
+
+    // 이벤트별 업로드된 이미지 목록 조회
+    async getGalleryImages() {
+        if (!this.isInitialized || !this.currentEventId) {
+            return [];
+        }
+
+        try {
+            const { data, error } = await this.supabase.storage
+                .from('event-images')
+                .list(`gallery/${this.currentEventId}`, {
+                    limit: 100,
+                    sortBy: { column: 'created_at', order: 'desc' }
+                });
+
+            if (error) throw error;
+
+            // 공개 URL로 변환
+            const imageUrls = data.map(file => {
+                const { data: urlData } = this.supabase.storage
+                    .from('event-images')
+                    .getPublicUrl(`gallery/${this.currentEventId}/${file.name}`);
+                return urlData.publicUrl;
+            });
+
+            console.log('갤러리 이미지 목록:', imageUrls);
+            return imageUrls;
+        } catch (error) {
+            console.error('갤러리 이미지 목록 조회 실패:', error);
+            return [];
+        }
+    }
+
     // 연결 상태 확인
     isConnected() {
         return this.isInitialized && this.supabase !== null;
