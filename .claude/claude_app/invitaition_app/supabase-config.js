@@ -474,6 +474,118 @@ class SupabaseConfig {
         }
     }
 
+    // 참석자 데이터 조회
+    async getAttendeesData() {
+        if (!this.isInitialized) {
+            return [];
+        }
+
+        try {
+            let attendees = [];
+
+            // RSVP 응답 데이터 조회
+            if (this.currentEventId) {
+                const { data: rsvpData, error: rsvpError } = await this.supabase
+                    .from('rsvp_responses')
+                    .select('*')
+                    .eq('event_id', this.currentEventId)
+                    .order('created_at', { ascending: false });
+
+                if (rsvpError) {
+                    console.warn('RSVP 데이터 조회 실패:', rsvpError);
+                } else {
+                    rsvpData.forEach(rsvp => {
+                        attendees.push({
+                            id: `rsvp-${rsvp.id}`,
+                            name: rsvp.name || '이름 없음',
+                            email: rsvp.email,
+                            phone: rsvp.phone,
+                            message: rsvp.message,
+                            response: rsvp.response,
+                            created_at: rsvp.created_at,
+                            source: 'rsvp'
+                        });
+                    });
+                }
+
+                // 방명록 메시지에서 참석자 정보 추출
+                const { data: guestbookData, error: guestbookError } = await this.supabase
+                    .from('guestbook_messages')
+                    .select('*')
+                    .eq('event_id', this.currentEventId)
+                    .eq('is_approved', true)
+                    .order('created_at', { ascending: false });
+
+                if (guestbookError) {
+                    console.warn('방명록 데이터 조회 실패:', guestbookError);
+                } else {
+                    guestbookData.forEach(entry => {
+                        // RSVP에 이미 있는 사용자는 제외 (이메일 기준)
+                        const existingRsvp = attendees.find(a => a.email && entry.email && a.email === entry.email);
+                        if (!existingRsvp) {
+                            attendees.push({
+                                id: `guestbook-${entry.id}`,
+                                name: entry.name,
+                                email: entry.email,
+                                message: entry.message,
+                                response: 'yes', // 방명록 남긴 사람은 참석으로 간주
+                                created_at: entry.created_at,
+                                source: 'guestbook'
+                            });
+                        }
+                    });
+                }
+            }
+
+            console.log('참석자 데이터 조회 성공:', attendees);
+            return attendees;
+
+        } catch (error) {
+            console.error('참석자 데이터 조회 실패:', error);
+            return [];
+        }
+    }
+
+    // 참석자 통계 조회
+    async getAttendeesStats() {
+        if (!this.isInitialized || !this.currentEventId) {
+            return {
+                total: 0,
+                yes: 0,
+                no: 0,
+                pending: 0
+            };
+        }
+
+        try {
+            const { data, error } = await this.supabase
+                .from('rsvp_responses')
+                .select('response')
+                .eq('event_id', this.currentEventId);
+
+            if (error) throw error;
+
+            const stats = {
+                total: data.length,
+                yes: data.filter(r => r.response === 'yes').length,
+                no: data.filter(r => r.response === 'no').length,
+                pending: data.filter(r => !r.response || r.response === 'pending').length
+            };
+
+            console.log('참석자 통계:', stats);
+            return stats;
+
+        } catch (error) {
+            console.error('참석자 통계 조회 실패:', error);
+            return {
+                total: 0,
+                yes: 0,
+                no: 0,
+                pending: 0
+            };
+        }
+    }
+
     // 연결 상태 확인
     isConnected() {
         return this.isInitialized && this.supabase !== null;

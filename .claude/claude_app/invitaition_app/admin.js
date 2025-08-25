@@ -20,35 +20,62 @@ const ADMIN_CREDENTIALS = {
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 관리자 페이지 초기화 시작...');
     
-    // 로그인 상태 확인
+    // 이벤트 리스너 설정 (가장 먼저)
+    setupEventListeners();
+    
+    // 로그인 상태 확인 (라이브러리 로드와 독립적으로)
     checkLoginStatus();
     
-    // 라이브러리 로드
-    await loadLibraries();
-    
-    // 이벤트 리스너 설정
-    setupEventListeners();
+    // 라이브러리 로드 (백그라운드에서)
+    loadLibraries().then(() => {
+        console.log('✅ 라이브러리 로드 완료');
+    }).catch(error => {
+        console.warn('⚠️ 라이브러리 로드 실패 (일부 기능 제한될 수 있음):', error);
+    });
     
     console.log('✅ 관리자 페이지 초기화 완료');
 });
 
 // 라이브러리 로드
 async function loadLibraries() {
+    const results = [];
+    
+    // Supabase 초기화
     try {
-        // Supabase 초기화
         if (typeof window.supabaseConfig !== 'undefined') {
             await window.supabaseConfig.initialize();
             console.log('✅ Supabase 연결 완료');
+            results.push('supabase-ok');
+        } else {
+            console.warn('⚠️ Supabase 설정을 찾을 수 없음');
+            results.push('supabase-skip');
         }
-        
-        // QR 라이브러리 로드
-        await loadQRLibrary();
-        await loadJsQRLibrary();
-        console.log('✅ QR 라이브러리 준비 완료');
-        
     } catch (error) {
-        console.error('라이브러리 로드 실패:', error);
+        console.warn('⚠️ Supabase 초기화 실패:', error);
+        results.push('supabase-error');
     }
+    
+    // QR 라이브러리 로드
+    try {
+        await loadQRLibrary();
+        console.log('✅ QR 라이브러리 로드 완료');
+        results.push('qrcode-ok');
+    } catch (error) {
+        console.warn('⚠️ QR 라이브러리 로드 실패:', error);
+        results.push('qrcode-error');
+    }
+    
+    try {
+        await loadJsQRLibrary();
+        console.log('✅ jsQR 라이브러리 로드 완료');
+        results.push('jsqr-ok');
+    } catch (error) {
+        console.warn('⚠️ jsQR 라이브러리 로드 실패:', error);
+        results.push('jsqr-error');
+    }
+    
+    console.log('📊 라이브러리 로드 결과:', results);
+    return results;
 }
 
 // 로그인 상태 확인
@@ -59,29 +86,47 @@ function checkLoginStatus() {
     const adminDashboard = document.getElementById('adminDashboard');
     
     setTimeout(() => {
-        loadingScreen.style.display = 'none';
-        
-        if (savedLogin) {
-            try {
-                const loginData = JSON.parse(savedLogin);
-                const loginTime = new Date(loginData.timestamp);
-                const now = new Date();
-                const hoursDiff = (now - loginTime) / (1000 * 60 * 60);
-                
-                // 24시간 이내의 로그인만 유효
-                if (hoursDiff < 24 && ADMIN_CREDENTIALS[loginData.adminId]) {
-                    isAdminLoggedIn = true;
-                    currentAdminUser = loginData.adminId;
-                    showAdminDashboard();
-                    return;
+        try {
+            loadingScreen.style.display = 'none';
+            
+            if (savedLogin) {
+                try {
+                    const loginData = JSON.parse(savedLogin);
+                    const loginTime = new Date(loginData.timestamp);
+                    const now = new Date();
+                    const hoursDiff = (now - loginTime) / (1000 * 60 * 60);
+                    
+                    // 24시간 이내의 로그인만 유효
+                    if (hoursDiff < 24 && ADMIN_CREDENTIALS[loginData.adminId]) {
+                        isAdminLoggedIn = true;
+                        currentAdminUser = loginData.adminId;
+                        showAdminDashboard();
+                        return;
+                    } else {
+                        // 만료된 로그인 정보 제거
+                        localStorage.removeItem('adminLogin');
+                        console.log('만료된 로그인 정보 삭제');
+                    }
+                } catch (error) {
+                    console.error('저장된 로그인 정보 오류:', error);
+                    localStorage.removeItem('adminLogin');
                 }
-            } catch (error) {
-                console.error('저장된 로그인 정보 오류:', error);
+            }
+            
+            // 로그인 화면 표시
+            if (loginScreen) {
+                loginScreen.style.display = 'flex';
+            } else {
+                console.error('로그인 화면 요소를 찾을 수 없습니다');
+            }
+        } catch (error) {
+            console.error('로그인 상태 확인 중 오류:', error);
+            // 오류 발생 시 로그인 화면 강제 표시
+            if (loginScreen) {
+                loginScreen.style.display = 'flex';
             }
         }
-        
-        loginScreen.style.display = 'flex';
-    }, 1500);
+    }, 800); // 1.5초에서 0.8초로 단축
 }
 
 // 이벤트 리스너 설정
@@ -317,32 +362,191 @@ async function loadAttendeesData() {
     attendeesList.innerHTML = '<div class="loading">참석자 데이터 로드 중...</div>';
     
     try {
+        let attendeesData = [];
+        let loadSource = 'none';
+        
+        // Supabase에서 참석자 데이터 로드 시도
         if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
-            // 실제 DB에서 참석자 목록 로드 로직 구현
-            attendeesList.innerHTML = '<div class="no-data">참석자 관리 기능은 Supabase 연결 후 사용 가능합니다.</div>';
-        } else {
-            // 로컬 데이터로 시뮬레이션
-            const rsvpResponse = localStorage.getItem('rsvpResponse');
-            if (rsvpResponse) {
-                attendeesList.innerHTML = `
-                    <div class="attendee-item">
-                        <div class="attendee-info">
-                            <span class="attendee-name">로컬 사용자</span>
-                            <span class="attendee-response ${rsvpResponse}">${rsvpResponse === 'yes' ? '참석' : '불참'}</span>
-                        </div>
-                        <div class="attendee-actions">
-                            <button class="btn-small" onclick="showAttendeeDetails()">상세정보</button>
-                        </div>
-                    </div>
-                `;
-            } else {
-                attendeesList.innerHTML = '<div class="no-data">아직 참석자가 없습니다.</div>';
+            try {
+                attendeesData = await window.supabaseConfig.getAttendeesData();
+                loadSource = 'supabase';
+                console.log('Supabase에서 참석자 데이터 로드:', attendeesData);
+            } catch (supabaseError) {
+                console.warn('Supabase 참석자 데이터 로드 실패:', supabaseError);
             }
         }
+        
+        // 로컬 데이터로 보완
+        if (attendeesData.length === 0) {
+            const localAttendees = getLocalAttendeesData();
+            if (localAttendees.length > 0) {
+                attendeesData = localAttendees;
+                loadSource = 'localStorage';
+            }
+        }
+        
+        if (attendeesData.length > 0) {
+            // 참석자 목록 렌더링
+            const attendeesHtml = attendeesData.map(attendee => `
+                <div class="attendee-item" data-id="${attendee.id}">
+                    <div class="attendee-info">
+                        <span class="attendee-name">${escapeHtml(attendee.name || '이름 없음')}</span>
+                        <span class="attendee-response ${attendee.response || 'unknown'}">
+                            ${getResponseText(attendee.response)}
+                        </span>
+                        <span class="attendee-date">${formatAttendeeDate(attendee.created_at || attendee.timestamp)}</span>
+                    </div>
+                    <div class="attendee-details">
+                        ${attendee.email ? `<div class="detail-item"><strong>이메일:</strong> ${escapeHtml(attendee.email)}</div>` : ''}
+                        ${attendee.phone ? `<div class="detail-item"><strong>전화:</strong> ${escapeHtml(attendee.phone)}</div>` : ''}
+                        ${attendee.message ? `<div class="detail-item"><strong>메시지:</strong> ${escapeHtml(attendee.message)}</div>` : ''}
+                    </div>
+                    <div class="attendee-actions">
+                        <button class="btn-small" onclick="toggleAttendeeDetails('${attendee.id}')">상세보기</button>
+                        ${loadSource === 'localStorage' ? `<button class="btn-small btn-delete" onclick="removeLocalAttendee('${attendee.id}')">삭제</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+            
+            attendeesList.innerHTML = attendeesHtml;
+            
+            // 성공 메시지
+            showNotification(`참석자 ${attendeesData.length}명을 ${loadSource === 'supabase' ? '데이터베이스' : '로컬'}에서 불러왔습니다.`, 'success');
+            
+        } else {
+            // 참석자가 없는 경우
+            attendeesList.innerHTML = `
+                <div class="no-data">
+                    <i class="fas fa-users"></i>
+                    <p>아직 참석자가 없습니다.</p>
+                    <small>사용자가 RSVP 응답을 하면 여기에 표시됩니다.</small>
+                </div>
+            `;
+        }
+        
     } catch (error) {
         console.error('참석자 데이터 로드 실패:', error);
-        attendeesList.innerHTML = '<div class="error">데이터를 불러올 수 없습니다.</div>';
+        attendeesList.innerHTML = `
+            <div class="error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>참석자 데이터를 불러오는 중 오류가 발생했습니다.</p>
+                <button class="btn-small" onclick="loadAttendeesData()">다시 시도</button>
+            </div>
+        `;
+        showNotification('참석자 데이터 로드에 실패했습니다.', 'error');
     }
+}
+
+// 로컬 참석자 데이터 가져오기
+function getLocalAttendeesData() {
+    const attendees = [];
+    
+    // RSVP 응답 데이터
+    const rsvpResponse = localStorage.getItem('rsvpResponse');
+    if (rsvpResponse) {
+        attendees.push({
+            id: 'rsvp-local',
+            name: '로컬 사용자',
+            response: rsvpResponse,
+            created_at: new Date().toISOString(),
+            source: 'rsvp'
+        });
+    }
+    
+    // 방명록 데이터에서 참석자 정보 추출
+    const guestbookData = JSON.parse(localStorage.getItem('guestbookData') || '[]');
+    guestbookData.forEach((entry, index) => {
+        if (entry.name) {
+            attendees.push({
+                id: 'guestbook-' + index,
+                name: entry.name,
+                message: entry.message,
+                response: 'yes', // 방명록을 남긴 사람은 참석으로 간주
+                created_at: entry.timestamp,
+                source: 'guestbook'
+            });
+        }
+    });
+    
+    return attendees;
+}
+
+// 응답 텍스트 변환
+function getResponseText(response) {
+    switch(response) {
+        case 'yes': return '참석';
+        case 'no': return '불참';
+        default: return '미응답';
+    }
+}
+
+// 참석자 날짜 포맷
+function formatAttendeeDate(dateStr) {
+    if (!dateStr) return '';
+    
+    try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('ko-KR', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (error) {
+        return '';
+    }
+}
+
+// 참석자 상세 정보 토글
+function toggleAttendeeDetails(attendeeId) {
+    const attendeeItem = document.querySelector(`[data-id="${attendeeId}"]`);
+    if (!attendeeItem) return;
+    
+    const details = attendeeItem.querySelector('.attendee-details');
+    const button = attendeeItem.querySelector('button');
+    
+    if (details.style.display === 'none' || !details.style.display) {
+        details.style.display = 'block';
+        button.textContent = '간략히';
+    } else {
+        details.style.display = 'none';
+        button.textContent = '상세보기';
+    }
+}
+
+// 로컬 참석자 제거
+function removeLocalAttendee(attendeeId) {
+    if (!confirm('이 참석자 정보를 삭제하시겠습니까?')) return;
+    
+    try {
+        if (attendeeId === 'rsvp-local') {
+            localStorage.removeItem('rsvpResponse');
+            showNotification('RSVP 응답이 삭제되었습니다.', 'success');
+        } else if (attendeeId.startsWith('guestbook-')) {
+            const index = parseInt(attendeeId.replace('guestbook-', ''));
+            const guestbookData = JSON.parse(localStorage.getItem('guestbookData') || '[]');
+            
+            if (index >= 0 && index < guestbookData.length) {
+                guestbookData.splice(index, 1);
+                localStorage.setItem('guestbookData', JSON.stringify(guestbookData));
+                showNotification('방명록 항목이 삭제되었습니다.', 'success');
+            }
+        }
+        
+        // 참석자 목록 새로고침
+        loadAttendeesData();
+        
+    } catch (error) {
+        console.error('참석자 삭제 실패:', error);
+        showNotification('참석자 삭제에 실패했습니다.', 'error');
+    }
+}
+
+// HTML 이스케이프 함수
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // 관리자 방명록 데이터 로드
