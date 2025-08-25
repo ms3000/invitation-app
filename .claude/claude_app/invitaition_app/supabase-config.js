@@ -374,7 +374,13 @@ class SupabaseConfig {
                 .maybeSingle(); // single() 대신 maybeSingle() 사용
 
             if (error) {
-                console.warn('컨텐츠 데이터 조회 실패:', error);
+                // 404 오류 (테이블이 없는 경우) 특별 처리
+                if (error.code === 'PGRST116' || error.code === '404' || error.message.includes('does not exist')) {
+                    console.log('컨텐츠 테이블이 존재하지 않음 - 로컬 모드로 동작');
+                    this.isInitialized = false; // 더 이상 Supabase 시도하지 않음
+                } else {
+                    console.warn('컨텐츠 데이터 조회 실패:', error);
+                }
                 return {};
             }
 

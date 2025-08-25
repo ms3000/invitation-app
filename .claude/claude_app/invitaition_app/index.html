@@ -175,8 +175,48 @@
             </div>
             <div class="rsvp-content">
                 <p>참석 여부를 알려주시면 더욱 원활한 행사 진행에 도움이 됩니다.</p>
-                <div class="rsvp-buttons">
-                    <button class="btn-rsvp btn-yes" onclick="rsvpResponse('yes')">
+                
+                <!-- 참석자 정보 입력 폼 -->
+                <div class="rsvp-form" id="rsvpForm" style="display: none;">
+                    <div class="form-group">
+                        <label for="attendeeName"><i class="fas fa-user"></i> 참석자명 *</label>
+                        <input type="text" id="attendeeName" name="attendeeName" required 
+                               placeholder="이름을 입력하세요" maxlength="20">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="attendeePhone"><i class="fas fa-phone"></i> 연락처 *</label>
+                        <input type="tel" id="attendeePhone" name="attendeePhone" required 
+                               placeholder="010-0000-0000" pattern="[0-9]{3}-[0-9]{4}-[0-9]{4}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="attendeeEmail"><i class="fas fa-envelope"></i> 이메일 주소 *</label>
+                        <input type="email" id="attendeeEmail" name="attendeeEmail" required 
+                               placeholder="email@example.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="attendeeMessage"><i class="fas fa-comment"></i> 메시지 (선택사항)</label>
+                        <textarea id="attendeeMessage" name="attendeeMessage" 
+                                  placeholder="추가 메시지가 있으시면 입력해주세요" maxlength="200" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="rsvp-buttons">
+                        <button class="btn-rsvp btn-confirm" onclick="submitRSVP()" id="rsvpConfirmBtn">
+                            <i class="fas fa-check"></i>
+                            참석 확정
+                        </button>
+                        <button class="btn-rsvp btn-cancel" onclick="cancelRSVP()">
+                            <i class="fas fa-times"></i>
+                            취소
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 초기 선택 버튼들 -->
+                <div class="rsvp-buttons" id="rsvpInitialButtons">
+                    <button class="btn-rsvp btn-yes" onclick="showRSVPForm('yes')">
                         <i class="fas fa-thumbs-up"></i>
                         참석
                     </button>

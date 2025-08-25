@@ -84,53 +84,200 @@ function sendEmail(email) {
     window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
 }
 
-// RSVP 응답 기능
-function rsvpResponse(response) {
-    const responses = {
-        'yes': '참석',
-        'no': '불참'
-    };
+// RSVP 폼 표시
+function showRSVPForm(response) {
+    const rsvpForm = document.getElementById('rsvpForm');
+    const initialButtons = document.getElementById('rsvpInitialButtons');
+    const confirmBtn = document.getElementById('rsvpConfirmBtn');
     
-    const responseText = responses[response];
+    // 폼 표시
+    rsvpForm.style.display = 'block';
+    initialButtons.style.display = 'none';
     
-    // 로컬 스토리지에 응답 저장
-    localStorage.setItem('rsvpResponse', response);
-    
-    // 시각적 피드백
-    const buttons = document.querySelectorAll('.btn-rsvp');
-    buttons.forEach(btn => {
-        btn.style.opacity = '0.5';
-        btn.disabled = true;
-    });
-    
-    // 선택된 버튼 강조
-    const selectedBtn = document.querySelector(`[onclick="rsvpResponse('${response}')"]`);
-    if (selectedBtn) {
-        selectedBtn.style.opacity = '1';
-        selectedBtn.style.background = response === 'yes' ? 
-            'linear-gradient(135deg, #27ae60, #2ecc71)' : 
-            'linear-gradient(135deg, #e74c3c, #c0392b)';
-    }
-    
-    // Supabase에 저장
-    if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
-        window.supabaseConfig.saveRSVP(response).catch(error => {
-            console.error('RSVP 저장 실패:', error);
-        });
-    }
-    
-    // QR 코드 생성 옵션 표시 (참석 선택 시)
+    // 버튼 텍스트 설정
     if (response === 'yes') {
-        setTimeout(() => {
-            showQRCodeGenerateOption();
-        }, 1000);
+        confirmBtn.innerHTML = '<i class="fas fa-check"></i> 참석 확정';
+        confirmBtn.className = 'btn-rsvp btn-confirm';
     }
     
-    showNotification(`${responseText}으로 응답이 저장되었습니다!`);
+    // 전역 변수에 응답 저장
+    window.currentRSVPResponse = response;
 }
 
-// QR 코드 생성 기능
-async function generateQRCode() {
+// RSVP 폼 취소
+function cancelRSVP() {
+    const rsvpForm = document.getElementById('rsvpForm');
+    const initialButtons = document.getElementById('rsvpInitialButtons');
+    
+    // 폼 숨기기
+    rsvpForm.style.display = 'none';
+    initialButtons.style.display = 'flex';
+    
+    // 폼 초기화
+    document.getElementById('attendeeName').value = '';
+    document.getElementById('attendeePhone').value = '';
+    document.getElementById('attendeeEmail').value = '';
+    document.getElementById('attendeeMessage').value = '';
+    
+    window.currentRSVPResponse = null;
+}
+
+// RSVP 제출
+async function submitRSVP() {
+    const name = document.getElementById('attendeeName').value.trim();
+    const phone = document.getElementById('attendeePhone').value.trim();
+    const email = document.getElementById('attendeeEmail').value.trim();
+    const message = document.getElementById('attendeeMessage').value.trim();
+    const response = window.currentRSVPResponse;
+    
+    // 유효성 검사
+    if (!name) {
+        showNotification('참석자명을 입력해주세요.', 'error');
+        document.getElementById('attendeeName').focus();
+        return;
+    }
+    
+    if (!phone) {
+        showNotification('연락처를 입력해주세요.', 'error');
+        document.getElementById('attendeePhone').focus();
+        return;
+    }
+    
+    if (!email) {
+        showNotification('이메일 주소를 입력해주세요.', 'error');
+        document.getElementById('attendeeEmail').focus();
+        return;
+    }
+    
+    // 이메일 형식 검사
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showNotification('올바른 이메일 주소를 입력해주세요.', 'error');
+        document.getElementById('attendeeEmail').focus();
+        return;
+    }
+    
+    // 전화번호 형식 검사 (자동 포맷팅)
+    const formattedPhone = formatPhoneNumber(phone);
+    if (!formattedPhone) {
+        showNotification('올바른 연락처를 입력해주세요. (예: 010-1234-5678)', 'error');
+        document.getElementById('attendeePhone').focus();
+        return;
+    }
+    
+    const attendeeData = {
+        name: name,
+        phone: formattedPhone,
+        email: email,
+        message: message,
+        response: response
+    };
+    
+    try {
+        // 로컬 스토리지에 저장
+        localStorage.setItem('rsvpResponse', response);
+        localStorage.setItem('attendeeData', JSON.stringify(attendeeData));
+        
+        // Supabase에 저장
+        if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
+            await window.supabaseConfig.saveRSVP(response, attendeeData);
+            console.log('RSVP Supabase 저장 완료');
+        }
+        
+        // UI 업데이트
+        const rsvpForm = document.getElementById('rsvpForm');
+        const rsvpContent = document.querySelector('.rsvp-content');
+        
+        rsvpForm.style.display = 'none';
+        
+        // 성공 메시지 표시
+        const successMessage = document.createElement('div');
+        successMessage.className = 'rsvp-success';
+        successMessage.innerHTML = `
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h3>참석 신청이 완료되었습니다!</h3>
+            <div class="attendee-summary">
+                <p><strong>참석자:</strong> ${name}</p>
+                <p><strong>연락처:</strong> ${formattedPhone}</p>
+                <p><strong>이메일:</strong> ${email}</p>
+                ${message ? `<p><strong>메시지:</strong> ${message}</p>` : ''}
+            </div>
+            <button class="btn-rsvp btn-generate-qr" onclick="generateAttendeeQRCode()">
+                <i class="fas fa-qrcode"></i>
+                입장용 QR 코드 생성
+            </button>
+        `;
+        
+        rsvpContent.appendChild(successMessage);
+        
+        showNotification('참석 신청이 완료되었습니다!', 'success');
+        
+    } catch (error) {
+        console.error('RSVP 저장 실패:', error);
+        showNotification('참석 신청 중 오류가 발생했습니다. 다시 시도해주세요.', 'error');
+    }
+}
+
+// 불참 응답 (기존 함수 수정)
+function rsvpResponse(response) {
+    if (response === 'no') {
+        // 불참의 경우 바로 처리
+        localStorage.setItem('rsvpResponse', response);
+        
+        // Supabase에 저장
+        if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
+            window.supabaseConfig.saveRSVP(response, {}).catch(error => {
+                console.error('RSVP 저장 실패:', error);
+            });
+        }
+        
+        // UI 업데이트
+        const initialButtons = document.getElementById('rsvpInitialButtons');
+        const rsvpContent = document.querySelector('.rsvp-content');
+        
+        initialButtons.style.display = 'none';
+        
+        const noResponseMessage = document.createElement('div');
+        noResponseMessage.className = 'rsvp-no-response';
+        noResponseMessage.innerHTML = `
+            <div class="response-icon">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <h3>불참으로 응답이 저장되었습니다</h3>
+            <p>다음 기회에 뵙겠습니다.</p>
+        `;
+        
+        rsvpContent.appendChild(noResponseMessage);
+        showNotification('불참으로 응답이 저장되었습니다.', 'info');
+    }
+}
+
+// 전화번호 포맷팅
+function formatPhoneNumber(phone) {
+    // 숫자만 추출
+    const numbers = phone.replace(/[^\d]/g, '');
+    
+    // 휴대폰 번호 검증 (010, 011, 016, 017, 018, 019)
+    if (numbers.length === 11 && /^01[0-9]/.test(numbers)) {
+        return numbers.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+    }
+    
+    // 일반 전화번호 (지역번호 포함)
+    if (numbers.length >= 9 && numbers.length <= 11) {
+        if (numbers.length === 9) {
+            return numbers.replace(/(\d{2})(\d{3})(\d{4})/, '$1-$2-$3');
+        } else if (numbers.length === 10) {
+            return numbers.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+        }
+    }
+    
+    return null; // 유효하지 않은 형식
+}
+
+// 참석자용 QR 코드 생성
+async function generateAttendeeQRCode() {
     try {
         // QR 코드 라이브러리 대기
         showNotification('QR 코드 생성 준비 중...', 'info');
@@ -141,9 +288,9 @@ async function generateQRCode() {
         }
         
         // 참석자 정보 가져오기
-        const guestName = prompt('이름을 입력해주세요:');
-        if (!guestName || guestName.trim() === '') {
-            showNotification('QR 코드 생성이 취소되었습니다.', 'error');
+        const attendeeData = JSON.parse(localStorage.getItem('attendeeData') || '{}');
+        if (!attendeeData.name) {
+            showNotification('참석자 정보를 찾을 수 없습니다.', 'error');
             return;
         }
         
@@ -153,13 +300,20 @@ async function generateQRCode() {
         // QR 코드 데이터 생성
         const qrData = {
             id: qrId,
-            name: guestName.trim(),
+            name: attendeeData.name,
+            phone: attendeeData.phone,
+            email: attendeeData.email,
             eventId: window.supabaseConfig?.currentEventId || 'default-event',
             timestamp: timestamp,
-            status: 'active'
+            status: 'active',
+            type: 'attendee'
         };
         
         const qrString = JSON.stringify(qrData);
+        
+        console.log('🏷️ 생성할 QR 데이터:', qrData);
+        console.log('📝 QR 문자열:', qrString);
+        console.log('📏 QR 문자열 길이:', qrString.length);
         
         // QR 코드 표시 영역 활성화
         const qrCodeSection = document.getElementById('qrCodeSection');
@@ -183,7 +337,7 @@ async function generateQRCode() {
         
         // QR 정보 업데이트
         document.getElementById('qrCodeId').textContent = qrId;
-        document.getElementById('qrCodeName').textContent = guestName.trim();
+        document.getElementById('qrCodeName').textContent = attendeeData.name;
         
         // QR 섹션 표시
         qrCodeSection.style.display = 'block';
@@ -197,7 +351,7 @@ async function generateQRCode() {
         }
         
         console.log('QR 코드 생성 완료:', qrId);
-        showNotification(`${guestName.trim()}님의 QR 코드가 생성되었습니다!`);
+        showNotification(`${attendeeData.name}님의 QR 코드가 생성되었습니다!`);
         
     } catch (error) {
         console.error('QR 코드 생성 실패:', error);

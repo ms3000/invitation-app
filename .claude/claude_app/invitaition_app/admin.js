@@ -1,5 +1,6 @@
-// 관리자 페이지 전용 JavaScript
+// 관리자 페이지 전용 JavaScript - v1.2 (오류 수정)
 // =====================================
+console.log('🚀 Admin.js v1.2 로드됨');
 
 // 전역 변수
 let isAdminLoggedIn = false;
@@ -20,20 +21,42 @@ const ADMIN_CREDENTIALS = {
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 관리자 페이지 초기화 시작...');
     
-    // 이벤트 리스너 설정 (가장 먼저)
-    setupEventListeners();
-    
-    // 로그인 상태 확인 (라이브러리 로드와 독립적으로)
-    checkLoginStatus();
-    
-    // 라이브러리 로드 (백그라운드에서)
-    loadLibraries().then(() => {
-        console.log('✅ 라이브러리 로드 완료');
-    }).catch(error => {
-        console.warn('⚠️ 라이브러리 로드 실패 (일부 기능 제한될 수 있음):', error);
-    });
-    
-    console.log('✅ 관리자 페이지 초기화 완료');
+    try {
+        // 이벤트 리스너 설정 (가장 먼저)
+        setupEventListeners();
+        
+        // 로그인 상태 확인 (라이브러리 로드와 독립적으로)
+        checkLoginStatus();
+        
+        // 라이브러리 로드 (백그라운드에서)
+        loadLibraries().then(() => {
+            console.log('✅ 라이브러리 로드 완료');
+        }).catch(error => {
+            console.warn('⚠️ 라이브러리 로드 실패 (일부 기능 제한될 수 있음):', error);
+        });
+        
+        console.log('✅ 관리자 페이지 초기화 완료');
+    } catch (error) {
+        console.error('❌ 관리자 페이지 초기화 실패:', error);
+        
+        // 오류가 발생해도 로딩 화면을 숨기고 로그인 화면 표시
+        const loadingScreen = document.getElementById('loadingScreen');
+        const loginScreen = document.getElementById('loginScreen');
+        
+        if (loadingScreen) {
+            loadingScreen.style.display = 'none';
+        }
+        if (loginScreen) {
+            loginScreen.style.display = 'block';
+        }
+        
+        // showNotification이 정의되어 있는지 확인 후 사용
+        if (typeof showNotification === 'function') {
+            showNotification('페이지 로드 중 오류가 발생했습니다. 새로고침을 시도해주세요.', 'error');
+        } else {
+            alert('페이지 로드 중 오류가 발생했습니다. 새로고침을 시도해주세요.');
+        }
+    }
 });
 
 // 라이브러리 로드
@@ -66,9 +89,14 @@ async function loadLibraries() {
     }
     
     try {
-        await loadJsQRLibrary();
-        console.log('✅ jsQR 라이브러리 로드 완료');
-        results.push('jsqr-ok');
+        if (typeof window.loadJsQRLibrary === 'function') {
+            await window.loadJsQRLibrary();
+            console.log('✅ jsQR 라이브러리 로드 완료');
+            results.push('jsqr-ok');
+        } else {
+            console.warn('⚠️ jsQR 라이브러리 로더가 없음');
+            results.push('jsqr-no-loader');
+        }
     } catch (error) {
         console.warn('⚠️ jsQR 라이브러리 로드 실패:', error);
         results.push('jsqr-error');
@@ -80,53 +108,90 @@ async function loadLibraries() {
 
 // 로그인 상태 확인
 function checkLoginStatus() {
-    const savedLogin = localStorage.getItem('adminLogin');
+    console.log('🔐 로그인 상태 확인 중...');
+    
+    // 즉시 로딩 화면 숨기기 (더 빠른 응답을 위해)
     const loadingScreen = document.getElementById('loadingScreen');
     const loginScreen = document.getElementById('loginScreen');
     const adminDashboard = document.getElementById('adminDashboard');
     
-    setTimeout(() => {
-        try {
-            loadingScreen.style.display = 'none';
-            
-            if (savedLogin) {
-                try {
-                    const loginData = JSON.parse(savedLogin);
-                    const loginTime = new Date(loginData.timestamp);
-                    const now = new Date();
-                    const hoursDiff = (now - loginTime) / (1000 * 60 * 60);
+    // 먼저 로딩 화면을 숨김
+    if (loadingScreen) {
+        loadingScreen.style.display = 'none';
+        console.log('✅ 로딩 화면 숨김');
+    }
+    
+    try {
+        const savedLogin = localStorage.getItem('adminLogin');
+        console.log('저장된 로그인 정보:', savedLogin ? '있음' : '없음');
+        
+        if (savedLogin) {
+            try {
+                const loginData = JSON.parse(savedLogin);
+                const loginTime = new Date(loginData.timestamp);
+                const now = new Date();
+                const hoursDiff = (now - loginTime) / (1000 * 60 * 60);
+                
+                console.log(`로그인 시간 차이: ${hoursDiff.toFixed(1)}시간`);
+                
+                // 24시간 이내의 로그인만 유효
+                if (hoursDiff < 24 && ADMIN_CREDENTIALS[loginData.adminId]) {
+                    console.log('✅ 유효한 로그인 발견, 대시보드 표시');
+                    isAdminLoggedIn = true;
+                    currentAdminUser = loginData.adminId;
                     
-                    // 24시간 이내의 로그인만 유효
-                    if (hoursDiff < 24 && ADMIN_CREDENTIALS[loginData.adminId]) {
-                        isAdminLoggedIn = true;
-                        currentAdminUser = loginData.adminId;
-                        showAdminDashboard();
-                        return;
-                    } else {
-                        // 만료된 로그인 정보 제거
-                        localStorage.removeItem('adminLogin');
-                        console.log('만료된 로그인 정보 삭제');
+                    // 로그인 화면 숨기기
+                    if (loginScreen) {
+                        loginScreen.style.display = 'none';
                     }
-                } catch (error) {
-                    console.error('저장된 로그인 정보 오류:', error);
+                    
+                    showAdminDashboard();
+                    return;
+                } else {
+                    // 만료된 로그인 정보 제거
                     localStorage.removeItem('adminLogin');
+                    console.log('⚠️ 만료된 로그인 정보 삭제');
                 }
-            }
-            
-            // 로그인 화면 표시
-            if (loginScreen) {
-                loginScreen.style.display = 'flex';
-            } else {
-                console.error('로그인 화면 요소를 찾을 수 없습니다');
-            }
-        } catch (error) {
-            console.error('로그인 상태 확인 중 오류:', error);
-            // 오류 발생 시 로그인 화면 강제 표시
-            if (loginScreen) {
-                loginScreen.style.display = 'flex';
+            } catch (parseError) {
+                console.error('❌ 로그인 데이터 파싱 오류:', parseError);
+                localStorage.removeItem('adminLogin');
             }
         }
-    }, 800); // 1.5초에서 0.8초로 단축
+        
+        // 로그인이 필요한 경우
+        showLoginScreen();
+        
+    } catch (error) {
+        console.error('❌ 로그인 상태 확인 중 오류:', error);
+        showLoginScreen();
+    }
+}
+
+// 로그인 화면 표시
+function showLoginScreen() {
+    const loginScreen = document.getElementById('loginScreen');
+    const adminDashboard = document.getElementById('adminDashboard');
+    
+    if (loginScreen) {
+        loginScreen.style.display = 'flex';
+        console.log('✅ 로그인 화면 표시');
+    } else {
+        console.error('❌ 로그인 화면 엘리먼트를 찾을 수 없음');
+        // 강제로 HTML 생성
+        document.body.innerHTML = `
+            <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; font-family: Arial, sans-serif;">
+                <h2>관리자 로그인</h2>
+                <p>페이지 로드에 문제가 발생했습니다. 페이지를 새로고침 해주세요.</p>
+                <button onclick="location.reload()" style="padding: 10px 20px; margin-top: 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    새로고침
+                </button>
+            </div>
+        `;
+    }
+    
+    if (adminDashboard) {
+        adminDashboard.style.display = 'none';
+    }
 }
 
 // 이벤트 리스너 설정
@@ -272,7 +337,8 @@ function loadSectionData(sectionName) {
             loadContentData();
             break;
         case 'qr':
-            // QR 섹션은 별도 로드 없음
+            // QR 섹션 로드시 참석자 명단 업데이트
+            updateAttendeeList();
             break;
         case 'settings':
             loadSettingsData();
@@ -389,21 +455,64 @@ async function loadAttendeesData() {
             // 참석자 목록 렌더링
             const attendeesHtml = attendeesData.map(attendee => `
                 <div class="attendee-item" data-id="${attendee.id}">
-                    <div class="attendee-info">
-                        <span class="attendee-name">${escapeHtml(attendee.name || '이름 없음')}</span>
-                        <span class="attendee-response ${attendee.response || 'unknown'}">
-                            ${getResponseText(attendee.response)}
-                        </span>
-                        <span class="attendee-date">${formatAttendeeDate(attendee.created_at || attendee.timestamp)}</span>
+                    <div class="attendee-header">
+                        <div class="attendee-info">
+                            <span class="attendee-name">${escapeHtml(attendee.name || '이름 없음')}</span>
+                            <span class="attendee-response ${attendee.response || 'unknown'}">
+                                ${getResponseText(attendee.response)}
+                            </span>
+                            <span class="attendee-date">${formatAttendeeDate(attendee.created_at || attendee.timestamp)}</span>
+                        </div>
+                        <div class="attendee-actions">
+                            <button class="btn-small" onclick="toggleAttendeeDetails('${attendee.id}')">
+                                <i class="fas fa-chevron-down"></i> 상세보기
+                            </button>
+                            ${(attendee.phone && attendee.email) ? `<button class="btn-small btn-qr" onclick="generateAttendeeQRCodeAdmin('${attendee.id}')">
+                                <i class="fas fa-qrcode"></i> QR 생성
+                            </button>` : ''}
+                            ${loadSource === 'localStorage' ? `<button class="btn-small btn-delete" onclick="removeLocalAttendee('${attendee.id}')">
+                                <i class="fas fa-trash"></i> 삭제
+                            </button>` : ''}
+                        </div>
                     </div>
-                    <div class="attendee-details">
-                        ${attendee.email ? `<div class="detail-item"><strong>이메일:</strong> ${escapeHtml(attendee.email)}</div>` : ''}
-                        ${attendee.phone ? `<div class="detail-item"><strong>전화:</strong> ${escapeHtml(attendee.phone)}</div>` : ''}
-                        ${attendee.message ? `<div class="detail-item"><strong>메시지:</strong> ${escapeHtml(attendee.message)}</div>` : ''}
-                    </div>
-                    <div class="attendee-actions">
-                        <button class="btn-small" onclick="toggleAttendeeDetails('${attendee.id}')">상세보기</button>
-                        ${loadSource === 'localStorage' ? `<button class="btn-small btn-delete" onclick="removeLocalAttendee('${attendee.id}')">삭제</button>` : ''}
+                    <div class="attendee-details" id="details-${attendee.id}" style="display: none;">
+                        <div class="detail-row">
+                            ${attendee.email ? `<div class="detail-item">
+                                <strong><i class="fas fa-envelope"></i> 이메일:</strong> 
+                                <span>${escapeHtml(attendee.email)}</span>
+                            </div>` : '<div class="detail-item detail-missing">이메일 정보 없음</div>'}
+                            ${attendee.phone ? `<div class="detail-item">
+                                <strong><i class="fas fa-phone"></i> 연락처:</strong> 
+                                <span>${escapeHtml(attendee.phone)}</span>
+                            </div>` : '<div class="detail-item detail-missing">연락처 정보 없음</div>'}
+                        </div>
+                        ${attendee.message ? `<div class="detail-item">
+                            <strong><i class="fas fa-comment"></i> 메시지:</strong>
+                            <p class="attendee-message">${escapeHtml(attendee.message)}</p>
+                        </div>` : ''}
+                        <div class="detail-item">
+                            <strong><i class="fas fa-tag"></i> 데이터 출처:</strong> 
+                            <span class="source-badge source-${attendee.source || 'unknown'}">${getSourceText(attendee.source)}</span>
+                        </div>
+                        <div class="qr-container" id="qr-container-${attendee.id}" style="display: none;">
+                            <div class="qr-header">
+                                <strong><i class="fas fa-qrcode"></i> 입장용 QR 코드</strong>
+                            </div>
+                            <div class="qr-content">
+                                <canvas id="qr-canvas-${attendee.id}" width="200" height="200"></canvas>
+                                <div class="qr-info">
+                                    <div class="qr-id">ID: <span id="qr-id-${attendee.id}">-</span></div>
+                                    <div class="qr-actions">
+                                        <button class="btn-small" onclick="downloadAttendeeQR('${attendee.id}')">
+                                            <i class="fas fa-download"></i> 다운로드
+                                        </button>
+                                        <button class="btn-small" onclick="copyQRInfo('${attendee.id}')">
+                                            <i class="fas fa-copy"></i> 정보 복사
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `).join('');
@@ -441,9 +550,25 @@ async function loadAttendeesData() {
 function getLocalAttendeesData() {
     const attendees = [];
     
-    // RSVP 응답 데이터
+    // 새로운 RSVP 데이터 (상세 정보 포함)
+    const attendeeData = JSON.parse(localStorage.getItem('attendeeData') || '{}');
     const rsvpResponse = localStorage.getItem('rsvpResponse');
-    if (rsvpResponse) {
+    
+    if (attendeeData.name && rsvpResponse) {
+        attendees.push({
+            id: 'attendee-' + Date.now(),
+            name: attendeeData.name,
+            phone: attendeeData.phone,
+            email: attendeeData.email,
+            message: attendeeData.message,
+            response: rsvpResponse,
+            created_at: new Date().toISOString(),
+            source: 'attendee'
+        });
+    }
+    
+    // 기존 RSVP 응답 데이터 (하위 호환성)
+    if (!attendeeData.name && rsvpResponse) {
         attendees.push({
             id: 'rsvp-local',
             name: '로컬 사용자',
@@ -477,6 +602,218 @@ function getResponseText(response) {
         case 'yes': return '참석';
         case 'no': return '불참';
         default: return '미응답';
+    }
+}
+
+// 데이터 출처 텍스트 변환
+function getSourceText(source) {
+    switch(source) {
+        case 'attendee': return 'RSVP 신청';
+        case 'rsvp': return 'RSVP 응답';
+        case 'guestbook': return '방명록';
+        default: return '알 수 없음';
+    }
+}
+
+// 참석자 상세정보 토글
+function toggleAttendeeDetails(attendeeId) {
+    const details = document.getElementById(`details-${attendeeId}`);
+    const button = event.target.closest('button');
+    const icon = button.querySelector('i');
+    
+    if (details.style.display === 'none') {
+        details.style.display = 'block';
+        icon.className = 'fas fa-chevron-up';
+        button.innerHTML = '<i class="fas fa-chevron-up"></i> 접기';
+    } else {
+        details.style.display = 'none';
+        icon.className = 'fas fa-chevron-down';
+        button.innerHTML = '<i class="fas fa-chevron-down"></i> 상세보기';
+    }
+}
+
+// 관리자에서 참석자 QR 코드 생성
+async function generateAttendeeQRCodeAdmin(attendeeId) {
+    try {
+        // QR 라이브러리 확인
+        if (typeof QRCode === 'undefined') {
+            showNotification('QR 코드 라이브러리가 로드되지 않았습니다.', 'error');
+            return;
+        }
+        
+        // 참석자 데이터 찾기
+        const attendeesData = await getAllAttendeesData();
+        const attendee = attendeesData.find(a => a.id === attendeeId);
+        
+        if (!attendee) {
+            showNotification('참석자 정보를 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
+        if (!attendee.phone || !attendee.email) {
+            showNotification('QR 코드 생성을 위해서는 연락처와 이메일이 필요합니다.', 'error');
+            return;
+        }
+        
+        const timestamp = Date.now();
+        const qrId = `QR-${timestamp.toString(36).toUpperCase()}`;
+        
+        // QR 코드 데이터 생성
+        const qrData = {
+            id: qrId,
+            name: attendee.name,
+            phone: attendee.phone,
+            email: attendee.email,
+            eventId: window.supabaseConfig?.currentEventId || 'default-event',
+            timestamp: timestamp,
+            status: 'active',
+            type: 'attendee'
+        };
+        
+        const qrString = JSON.stringify(qrData);
+        const canvas = document.getElementById(`qr-canvas-${attendeeId}`);
+        const qrContainer = document.getElementById(`qr-container-${attendeeId}`);
+        const qrIdElement = document.getElementById(`qr-id-${attendeeId}`);
+        
+        if (!canvas) {
+            showNotification('QR 코드 캔버스를 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
+        // 캔버스에 QR 코드 생성
+        await QRCode.toCanvas(canvas, qrString, {
+            width: 200,
+            height: 200,
+            margin: 2,
+            color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+            }
+        });
+        
+        // QR 정보 업데이트
+        qrIdElement.textContent = qrId;
+        qrContainer.style.display = 'block';
+        
+        // 전역 저장 (다운로드용)
+        window.attendeeQRCodes = window.attendeeQRCodes || {};
+        window.attendeeQRCodes[attendeeId] = qrData;
+        
+        showNotification(`${attendee.name}님의 QR 코드가 생성되었습니다!`, 'success');
+        
+    } catch (error) {
+        console.error('QR 코드 생성 실패:', error);
+        showNotification('QR 코드 생성에 실패했습니다.', 'error');
+    }
+}
+
+// 모든 참석자 데이터 가져오기 (통합)
+async function getAllAttendeesData() {
+    let attendeesData = [];
+    
+    // Supabase에서 시도
+    if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
+        try {
+            attendeesData = await window.supabaseConfig.getAttendeesData();
+        } catch (error) {
+            console.warn('Supabase 데이터 로드 실패:', error);
+        }
+    }
+    
+    // 로컬 데이터로 보완
+    if (attendeesData.length === 0) {
+        attendeesData = getLocalAttendeesData();
+    }
+    
+    return attendeesData;
+}
+
+// 참석자 QR 다운로드
+function downloadAttendeeQR(attendeeId) {
+    const canvas = document.getElementById(`qr-canvas-${attendeeId}`);
+    const qrData = window.attendeeQRCodes?.[attendeeId];
+    
+    if (!canvas || !qrData) {
+        showNotification('다운로드할 QR 코드가 없습니다.', 'error');
+        return;
+    }
+    
+    try {
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL();
+        link.download = `QR-${qrData.name}-${qrData.id}.png`;
+        link.click();
+        
+        showNotification(`${qrData.name}님의 QR 코드가 다운로드되었습니다.`, 'success');
+    } catch (error) {
+        console.error('QR 다운로드 실패:', error);
+        showNotification('QR 코드 다운로드에 실패했습니다.', 'error');
+    }
+}
+
+// QR 코드 정보 복사
+function copyQRInfo(attendeeId) {
+    const qrData = window.attendeeQRCodes?.[attendeeId];
+    
+    if (!qrData) {
+        showNotification('복사할 QR 정보가 없습니다.', 'error');
+        return;
+    }
+    
+    const qrInfo = `참석자 QR 코드 정보
+이름: ${qrData.name}
+연락처: ${qrData.phone}
+이메일: ${qrData.email}
+QR ID: ${qrData.id}
+생성시간: ${new Date(qrData.timestamp).toLocaleString('ko-KR')}`;
+    
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(qrInfo).then(() => {
+            showNotification('QR 코드 정보가 복사되었습니다.', 'success');
+        });
+    } else {
+        showNotification('클립보드 복사를 지원하지 않는 브라우저입니다.', 'error');
+    }
+}
+
+// 로컬 참석자 삭제
+function removeLocalAttendee(attendeeId) {
+    if (!confirm('이 참석자 정보를 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    try {
+        if (attendeeId === 'rsvp-local' || attendeeId.startsWith('attendee-')) {
+            // RSVP 데이터 삭제
+            localStorage.removeItem('rsvpResponse');
+            localStorage.removeItem('attendeeData');
+            showNotification('RSVP 데이터가 삭제되었습니다.', 'success');
+        } else if (attendeeId.startsWith('guestbook-')) {
+            // 방명록 데이터 삭제
+            const index = parseInt(attendeeId.replace('guestbook-', ''));
+            const guestbookData = JSON.parse(localStorage.getItem('guestbookData') || '[]');
+            
+            if (index >= 0 && index < guestbookData.length) {
+                guestbookData.splice(index, 1);
+                localStorage.setItem('guestbookData', JSON.stringify(guestbookData));
+                showNotification('방명록 데이터가 삭제되었습니다.', 'success');
+            } else {
+                showNotification('삭제할 데이터를 찾을 수 없습니다.', 'error');
+                return;
+            }
+        }
+        
+        // QR 데이터도 삭제
+        if (window.attendeeQRCodes && window.attendeeQRCodes[attendeeId]) {
+            delete window.attendeeQRCodes[attendeeId];
+        }
+        
+        // 참석자 목록 다시 로드
+        loadAttendeesData();
+        
+    } catch (error) {
+        console.error('참석자 삭제 실패:', error);
+        showNotification('참석자 삭제에 실패했습니다.', 'error');
     }
 }
 
@@ -657,25 +994,83 @@ function refreshGuestbook() {
 
 // QR 스캐너 시작 (기존 함수 재사용)
 async function startQRScanner() {
+    console.log('🚀 QR 스캐너 시작 시도...');
+    
     try {
-        // jsQR 라이브러리 확인
+        // jsQR 라이브러리 확인 및 로드
         if (typeof jsQR === 'undefined') {
-            showNotification('QR 스캔 기능을 사용할 수 없습니다. jsQR 라이브러리가 로드되지 않았습니다.', 'error');
+            console.log('⚠️ jsQR 라이브러리 없음, 로드 시도...');
+            
+            if (typeof window.loadJsQRLibrary === 'function') {
+                await window.loadJsQRLibrary();
+                
+                if (typeof jsQR === 'undefined') {
+                    showNotification('QR 스캔 라이브러리 로드에 실패했습니다. 페이지를 새로고침해주세요.', 'error');
+                    return;
+                }
+            } else {
+                showNotification('QR 스캔 기능을 사용할 수 없습니다. jsQR 라이브러리가 로드되지 않았습니다.', 'error');
+                return;
+            }
+        }
+        
+        console.log('✅ jsQR 라이브러리 확인됨');
+        
+        // 카메라 권한 확인
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showNotification('이 브라우저에서는 카메라 접근이 지원되지 않습니다.', 'error');
             return;
         }
+        
+        console.log('✅ 카메라 API 지원 확인됨');
         
         const video = document.getElementById('qrScannerVideo');
         const canvas = document.getElementById('qrScannerCanvas');
         const placeholder = document.querySelector('.scanner-placeholder');
         
         // 카메라 스트림 얻기
-        qrScannerStream = await navigator.mediaDevices.getUserMedia({
+        console.log('📷 카메라 스트림 요청 중...');
+        
+        const constraints = {
             video: { 
-                facingMode: 'environment',
+                facingMode: 'environment', // 후면 카메라 우선
                 width: { ideal: 640 },
                 height: { ideal: 480 }
             }
-        });
+        };
+        
+        try {
+            qrScannerStream = await navigator.mediaDevices.getUserMedia(constraints);
+            console.log('✅ 카메라 스트림 획득 성공');
+        } catch (cameraError) {
+            console.warn('⚠️ 후면 카메라 실패, 전면 카메라 시도...', cameraError);
+            
+            // 후면 카메라 실패시 전면 카메라 시도
+            try {
+                qrScannerStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'user',
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
+                });
+                console.log('✅ 전면 카메라 스트림 획득 성공');
+            } catch (frontCameraError) {
+                console.warn('⚠️ 전면 카메라도 실패, 기본 카메라 시도...', frontCameraError);
+                
+                // 모든 특정 설정 없이 기본 카메라 시도
+                try {
+                    qrScannerStream = await navigator.mediaDevices.getUserMedia({
+                        video: true
+                    });
+                    console.log('✅ 기본 카메라 스트림 획득 성공');
+                } catch (basicCameraError) {
+                    console.error('❌ 모든 카메라 접근 실패:', basicCameraError);
+                    showNotification('카메라에 접근할 수 없습니다. 카메라 권한을 허용해주세요.', 'error');
+                    return;
+                }
+            }
+        }
         
         video.srcObject = qrScannerStream;
         video.play();
@@ -686,22 +1081,76 @@ async function startQRScanner() {
         document.querySelector('.btn-start-scan').style.display = 'none';
         document.querySelector('.btn-stop-scan').style.display = 'inline-flex';
         
-        // QR 코드 스캔 시작
-        canvas.width = video.videoWidth || 640;
-        canvas.height = video.videoHeight || 480;
-        const context = canvas.getContext('2d');
-        
-        qrScannerInterval = setInterval(() => {
-            if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                const code = jsQR(imageData.data, imageData.width, imageData.height);
+        // QR 스캔 시작 함수
+        const startScanning = () => {
+            console.log('🔍 QR 스캔 루프 시작');
+            
+            // 캔버스 크기 설정
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            const context = canvas.getContext('2d');
+            
+            console.log(`📐 캔버스 크기: ${canvas.width} x ${canvas.height}`);
+            console.log(`📐 비디오 크기: ${video.videoWidth} x ${video.videoHeight}`);
+            
+            let scanCount = 0;
+            
+            qrScannerInterval = setInterval(() => {
+                scanCount++;
                 
-                if (code) {
-                    handleQRCodeDetection(code.data);
+                if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
+                    // 현재 비디오 크기에 맞춰 캔버스 크기 조정
+                    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        console.log(`📐 캔버스 크기 재조정: ${canvas.width} x ${canvas.height}`);
+                    }
+                    
+                    try {
+                        // 비디오 프레임을 캔버스에 그리기
+                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                        
+                        // QR 코드 감지 시도
+                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                            inversionAttempts: "dontInvert"
+                        });
+                        
+                        // 10번마다 스캔 상태 로그 (너무 많은 로그 방지)
+                        if (scanCount % 50 === 0) {
+                            console.log(`🔍 QR 스캔 중... (${scanCount}번째 시도)`);
+                        }
+                        
+                        if (code) {
+                            console.log('🎉 QR 코드 발견!', code.data);
+                            clearInterval(qrScannerInterval);
+                            handleQRCodeDetection(code.data);
+                        }
+                        
+                    } catch (scanError) {
+                        console.error('QR 스캔 중 오류:', scanError);
+                    }
+                } else {
+                    if (scanCount % 50 === 0) {
+                        console.log('⏳ 비디오 데이터 대기 중...', {
+                            readyState: video.readyState,
+                            videoWidth: video.videoWidth,
+                            videoHeight: video.videoHeight
+                        });
+                    }
                 }
-            }
-        }, 100);
+            }, 100);
+        };
+        
+        // 비디오가 로드될 때까지 기다림
+        video.addEventListener('loadedmetadata', startScanning);
+        
+        // 비디오가 이미 로드된 경우 즉시 시작
+        if (video.readyState >= video.HAVE_METADATA) {
+            startScanning();
+        } else {
+            console.log('⏳ 비디오 메타데이터 로드 대기 중...');
+        }
         
         showNotification('QR 코드 스캐너가 시작되었습니다.', 'success');
         
@@ -736,13 +1185,45 @@ function stopQRScanner() {
 
 // QR 코드 감지 처리
 function handleQRCodeDetection(qrData) {
-    console.log('QR 코드 감지:', qrData);
+    console.log('🔍 QR 코드 감지 시작:', qrData);
+    console.log('QR 데이터 타입:', typeof qrData);
+    console.log('QR 데이터 길이:', qrData.length);
+    
+    const scanResults = document.getElementById('scanResults');
+    
+    if (!scanResults) {
+        console.error('❌ scanResults 엘리먼트를 찾을 수 없음');
+        alert('QR 스캔 결과를 표시할 영역을 찾을 수 없습니다.');
+        return;
+    }
     
     try {
+        console.log('📋 JSON 파싱 시도...');
         const scannedData = JSON.parse(qrData);
-        const scanResults = document.getElementById('scanResults');
+        console.log('✅ 파싱된 QR 데이터:', scannedData);
+        
+        // 중복 스캔 방지
+        const scannedAttendees = JSON.parse(localStorage.getItem('scannedAttendees') || '[]');
+        const alreadyScanned = scannedAttendees.find(attendee => attendee.id === scannedData.id);
+        
+        if (alreadyScanned) {
+            scanResults.style.display = 'block';
+            scanResults.innerHTML = `
+                <div class="scan-warning">
+                    <h4>⚠️ 이미 입장 확인된 참석자입니다</h4>
+                    <div class="scan-info">
+                        <p><strong>참석자:</strong> ${scannedData.name}</p>
+                        <p><strong>첫 입장시간:</strong> ${formatDate(alreadyScanned.entryTime)}</p>
+                        <p><strong>QR ID:</strong> ${scannedData.id}</p>
+                    </div>
+                </div>
+            `;
+            stopQRScanner();
+            return;
+        }
         
         // 스캔 결과 표시
+        console.log('🎉 스캔 결과 표시 시작');
         scanResults.style.display = 'block';
         scanResults.innerHTML = `
             <div class="scan-success">
@@ -750,38 +1231,536 @@ function handleQRCodeDetection(qrData) {
                 <div class="scan-info">
                     <p><strong>QR ID:</strong> ${scannedData.id}</p>
                     <p><strong>참석자:</strong> ${scannedData.name}</p>
+                    <p><strong>연락처:</strong> ${scannedData.phone || '정보 없음'}</p>
+                    <p><strong>이메일:</strong> ${scannedData.email || '정보 없음'}</p>
                     <p><strong>생성시간:</strong> ${formatDate(scannedData.timestamp)}</p>
                     <p><strong>상태:</strong> ${scannedData.status}</p>
                 </div>
-                <button class="btn-confirm-entry" onclick="confirmEntry('${scannedData.id}')">
-                    입장 확인
-                </button>
+                <div class="scan-actions">
+                    <button class="btn-confirm-entry" onclick="confirmEntry('${scannedData.id}', ${JSON.stringify(scannedData).replace(/"/g, '&quot;')})">
+                        <i class="fas fa-check"></i> 입장 확인
+                    </button>
+                    <button class="btn-reject-entry" onclick="rejectEntry('${scannedData.id}')">
+                        <i class="fas fa-times"></i> 입장 거부
+                    </button>
+                </div>
             </div>
         `;
         
+        console.log('✅ 스캔 결과 UI 업데이트 완료');
+        
         // 스캐너 자동 중지
+        console.log('⏸️ QR 스캐너 자동 중지');
         stopQRScanner();
+        
+        // 알림도 표시
+        showNotification(`QR 코드 스캔 완료: ${scannedData.name}`, 'success');
         
     } catch (error) {
         console.error('QR 코드 파싱 실패:', error);
+        scanResults.style.display = 'block';
+        scanResults.innerHTML = `
+            <div class="scan-error">
+                <h4>❌ QR 코드 인식 실패</h4>
+                <p>올바르지 않은 QR 코드이거나 인식할 수 없는 형식입니다.</p>
+                <p class="scan-data-debug">스캔된 데이터: ${qrData.substring(0, 100)}...</p>
+            </div>
+        `;
         showNotification('올바르지 않은 QR 코드입니다.', 'error');
     }
 }
 
 // 입장 확인
-function confirmEntry(qrId) {
-    if (confirm('이 참석자의 입장을 확인하시겠습니까?')) {
-        showNotification(`${qrId} 참석자 입장이 확인되었습니다.`, 'success');
+function confirmEntry(qrId, scannedData) {
+    try {
+        const attendeeData = typeof scannedData === 'string' ? JSON.parse(scannedData) : scannedData;
+        const entryTime = new Date().toISOString();
         
-        // 스캔 결과 숨김
-        document.getElementById('scanResults').style.display = 'none';
+        // 참석자 정보를 스캔된 참석자 목록에 추가
+        const scannedAttendees = JSON.parse(localStorage.getItem('scannedAttendees') || '[]');
+        const attendeeRecord = {
+            ...attendeeData,
+            entryTime: entryTime,
+            status: 'entered',
+            scannedAt: new Date().toISOString()
+        };
+        
+        scannedAttendees.push(attendeeRecord);
+        localStorage.setItem('scannedAttendees', JSON.stringify(scannedAttendees));
+        
+        // Supabase에도 저장
+        if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
+            window.supabaseConfig.recordAttendeeEntry(attendeeRecord).catch(error => {
+                console.warn('Supabase 입장 기록 저장 실패:', error);
+            });
+        }
+        
+        // UI 업데이트
+        const scanResults = document.getElementById('scanResults');
+        scanResults.innerHTML = `
+            <div class="scan-confirmed">
+                <h4>✅ 입장이 확인되었습니다</h4>
+                <div class="scan-info">
+                    <p><strong>참석자:</strong> ${attendeeData.name}</p>
+                    <p><strong>입장시간:</strong> ${formatDate(entryTime)}</p>
+                </div>
+            </div>
+        `;
+        
+        // 실시간 참석자 명단 업데이트
+        updateAttendeeList();
+        
+        showNotification(`${attendeeData.name}님의 입장이 확인되었습니다.`, 'success');
+        
+        // 5초 후 스캔 결과 초기화
+        setTimeout(() => {
+            scanResults.style.display = 'none';
+        }, 5000);
+        
+    } catch (error) {
+        console.error('입장 확인 실패:', error);
+        showNotification('입장 확인 처리에 실패했습니다.', 'error');
+    }
+}
+
+// 입장 거부
+function rejectEntry(qrId) {
+    const scanResults = document.getElementById('scanResults');
+    scanResults.innerHTML = `
+        <div class="scan-rejected">
+            <h4>❌ 입장이 거부되었습니다</h4>
+            <p>QR ID: ${qrId}</p>
+        </div>
+    `;
+    
+    showNotification('입장이 거부되었습니다.', 'info');
+    
+    // 3초 후 스캔 결과 초기화
+    setTimeout(() => {
+        scanResults.style.display = 'none';
+    }, 3000);
+}
+
+// 테스트 QR 코드 생성
+async function generateTestQRCode() {
+    console.log('🧪 테스트 QR 코드 생성 시작');
+    
+    try {
+        // QR 라이브러리 확인
+        if (typeof QRCode === 'undefined') {
+            console.log('⚠️ QR 라이브러리 로드 시도...');
+            if (typeof window.loadQRLibrary === 'function') {
+                await window.loadQRLibrary();
+                if (typeof QRCode === 'undefined') {
+                    showNotification('QR 코드 생성 라이브러리를 로드할 수 없습니다.', 'error');
+                    return;
+                }
+            } else {
+                showNotification('QR 코드 생성 라이브러리가 없습니다.', 'error');
+                return;
+            }
+        }
+        
+        const timestamp = Date.now();
+        const qrId = `TEST-QR-${timestamp.toString(36).toUpperCase()}`;
+        
+        // 테스트 QR 데이터 생성
+        const testQRData = {
+            id: qrId,
+            name: '테스트 참석자',
+            phone: '010-1234-5678',
+            email: 'test@example.com',
+            eventId: 'test-event',
+            timestamp: timestamp,
+            status: 'active',
+            type: 'attendee'
+        };
+        
+        const qrString = JSON.stringify(testQRData);
+        console.log('🏷️ 테스트 QR 데이터:', testQRData);
+        console.log('📝 테스트 QR 문자열:', qrString);
+        
+        // QR 코드를 표시할 임시 div 생성
+        const existingTestDiv = document.getElementById('testQRDisplay');
+        if (existingTestDiv) {
+            existingTestDiv.remove();
+        }
+        
+        const testQRDiv = document.createElement('div');
+        testQRDiv.id = 'testQRDisplay';
+        testQRDiv.innerHTML = `
+            <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                        background: white; padding: 20px; border-radius: 10px; 
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 10000; text-align: center;">
+                <h3>🧪 테스트 QR 코드</h3>
+                <canvas id="testQRCanvas" width="256" height="256"></canvas>
+                <p><strong>QR ID:</strong> ${qrId}</p>
+                <p><strong>참석자:</strong> ${testQRData.name}</p>
+                <div style="margin-top: 15px;">
+                    <button onclick="document.getElementById('testQRDisplay').remove()" 
+                            style="background: #e74c3c; color: white; border: none; padding: 10px 20px; 
+                                   border-radius: 5px; cursor: pointer; margin-right: 10px;">
+                        닫기
+                    </button>
+                    <button onclick="testQRScan('${qrString}')" 
+                            style="background: #27ae60; color: white; border: none; padding: 10px 20px; 
+                                   border-radius: 5px; cursor: pointer;">
+                        이 QR로 테스트 스캔
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(testQRDiv);
+        
+        // QR 코드 생성
+        const testCanvas = document.getElementById('testQRCanvas');
+        await QRCode.toCanvas(testCanvas, qrString, {
+            width: 256,
+            height: 256,
+            margin: 2,
+            color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+            }
+        });
+        
+        console.log('✅ 테스트 QR 코드 생성 완료');
+        showNotification('테스트 QR 코드가 생성되었습니다!', 'success');
+        
+    } catch (error) {
+        console.error('❌ 테스트 QR 코드 생성 실패:', error);
+        showNotification('테스트 QR 코드 생성에 실패했습니다.', 'error');
+    }
+}
+
+// 테스트 QR 스캔 시뮬레이션
+function testQRScan(qrString) {
+    console.log('🧪 테스트 QR 스캔 시뮬레이션 시작');
+    
+    // 테스트 QR 창 닫기
+    const testDiv = document.getElementById('testQRDisplay');
+    if (testDiv) {
+        testDiv.remove();
+    }
+    
+    // QR 스캔 결과 처리 함수 직접 호출
+    handleQRCodeDetection(qrString);
+}
+
+// 실시간 참석자 명단 업데이트
+function updateAttendeeList() {
+    const attendeeListContainer = document.getElementById('scannedAttendeesList');
+    if (!attendeeListContainer) return;
+    
+    const scannedAttendees = JSON.parse(localStorage.getItem('scannedAttendees') || '[]');
+    
+    if (scannedAttendees.length === 0) {
+        attendeeListContainer.innerHTML = `
+            <div class="no-data">
+                <i class="fas fa-users"></i>
+                <p>아직 입장 확인된 참석자가 없습니다.</p>
+                <small>QR 코드를 스캔하면 여기에 표시됩니다.</small>
+            </div>
+        `;
+        return;
+    }
+    
+    // 최신 입장순으로 정렬
+    scannedAttendees.sort((a, b) => new Date(b.entryTime) - new Date(a.entryTime));
+    
+    const attendeeListHtml = scannedAttendees.map((attendee, index) => `
+        <div class="scanned-attendee-item" data-id="${attendee.id}">
+            <div class="attendee-number">${index + 1}</div>
+            <div class="attendee-details">
+                <div class="attendee-main-info">
+                    <span class="attendee-name">${escapeHtml(attendee.name)}</span>
+                    <span class="entry-time">${formatDate(attendee.entryTime)}</span>
+                </div>
+                <div class="attendee-contact-info">
+                    ${attendee.phone ? `<span class="phone"><i class="fas fa-phone"></i> ${attendee.phone}</span>` : ''}
+                    ${attendee.email ? `<span class="email"><i class="fas fa-envelope"></i> ${attendee.email}</span>` : ''}
+                </div>
+                <div class="qr-info">
+                    <span class="qr-id">QR: ${attendee.id}</span>
+                    <span class="scan-time">스캔: ${formatDate(attendee.scannedAt)}</span>
+                </div>
+            </div>
+            <div class="attendee-actions">
+                <button class="btn-small btn-delete" onclick="removeScannedAttendee('${attendee.id}', ${index})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+    
+    attendeeListContainer.innerHTML = attendeeListHtml;
+    
+    // 통계 업데이트
+    updateAttendeeStats(scannedAttendees.length);
+}
+
+// 참석자 통계 업데이트
+function updateAttendeeStats(count) {
+    const statsContainer = document.querySelector('.attendee-stats');
+    if (statsContainer) {
+        statsContainer.innerHTML = `
+            <div class="stat-item">
+                <div class="stat-number">${count}</div>
+                <div class="stat-label">총 입장자</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">${new Date().toLocaleDateString('ko-KR')}</div>
+                <div class="stat-label">오늘 날짜</div>
+            </div>
+        `;
+    }
+}
+
+// 스캔된 참석자 삭제
+function removeScannedAttendee(attendeeId, index) {
+    if (confirm('이 참석자를 명단에서 제거하시겠습니까?')) {
+        try {
+            const scannedAttendees = JSON.parse(localStorage.getItem('scannedAttendees') || '[]');
+            
+            // ID 또는 인덱스로 찾아서 삭제
+            const attendeeIndex = scannedAttendees.findIndex(attendee => attendee.id === attendeeId);
+            
+            if (attendeeIndex !== -1) {
+                const removedAttendee = scannedAttendees[attendeeIndex];
+                scannedAttendees.splice(attendeeIndex, 1);
+                localStorage.setItem('scannedAttendees', JSON.stringify(scannedAttendees));
+                
+                // Supabase에서도 삭제
+                if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
+                    window.supabaseConfig.removeAttendeeEntry(attendeeId).catch(error => {
+                        console.warn('Supabase 입장 기록 삭제 실패:', error);
+                    });
+                }
+                
+                updateAttendeeList();
+                showNotification(`${removedAttendee.name}님이 참석자 명단에서 제거되었습니다.`, 'success');
+            } else {
+                showNotification('삭제할 참석자를 찾을 수 없습니다.', 'error');
+            }
+            
+        } catch (error) {
+            console.error('참석자 삭제 실패:', error);
+            showNotification('참석자 삭제에 실패했습니다.', 'error');
+        }
+    }
+}
+
+// 행사 실 참석자 명단 Excel 다운로드
+function downloadAttendeeExcel() {
+    const scannedAttendees = JSON.parse(localStorage.getItem('scannedAttendees') || '[]');
+    
+    if (scannedAttendees.length === 0) {
+        showNotification('다운로드할 참석자 데이터가 없습니다.', 'error');
+        return;
+    }
+    
+    try {
+        // CSV 형식으로 데이터 생성 (Excel에서 읽기 가능)
+        const headers = ['순번', '참석자명', '연락처', '이메일', '입장시간', 'QR코드ID', '스캔시간'];
+        const csvContent = [
+            // BOM 추가 (한글 깨짐 방지)
+            '\uFEFF',
+            // 헤더
+            headers.join(','),
+            // 데이터 (입장 순서대로 정렬)
+            ...scannedAttendees
+                .sort((a, b) => new Date(a.entryTime) - new Date(b.entryTime))
+                .map((attendee, index) => [
+                    index + 1,
+                    `"${attendee.name || ''}"`,
+                    `"${attendee.phone || ''}"`,
+                    `"${attendee.email || ''}"`,
+                    `"${formatExcelDate(attendee.entryTime)}"`,
+                    `"${attendee.id || ''}"`,
+                    `"${formatExcelDate(attendee.scannedAt)}"`
+                ].join(','))
+        ].join('\n');
+        
+        // 파일 다운로드
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        
+        const today = new Date().toISOString().split('T')[0];
+        link.download = `행사참석자명단_${today}_${scannedAttendees.length}명.csv`;
+        
+        // 다운로드 실행
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showNotification(`참석자 명단 (${scannedAttendees.length}명)이 Excel 파일로 다운로드되었습니다.`, 'success');
+        
+    } catch (error) {
+        console.error('Excel 다운로드 실패:', error);
+        showNotification('Excel 파일 다운로드에 실패했습니다.', 'error');
+    }
+}
+
+// Excel용 날짜 포맷
+function formatExcelDate(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+// 참석자 명단 초기화
+function clearAttendeeList() {
+    if (confirm('모든 참석자 명단을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+        localStorage.removeItem('scannedAttendees');
+        
+        // Supabase에서도 삭제
+        if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
+            window.supabaseConfig.clearAllAttendeeEntries().catch(error => {
+                console.warn('Supabase 참석자 명단 삭제 실패:', error);
+            });
+        }
+        
+        updateAttendeeList();
+        showNotification('모든 참석자 명단이 삭제되었습니다.', 'success');
+    }
+}
+
+// 모든 참석자 데이터 삭제 (RSVP, 방명록, QR 스캔 기록 포함)
+function clearAllAttendeeData() {
+    const confirmMessage = `모든 참석자 관련 데이터를 삭제하시겠습니까?
+
+삭제될 데이터:
+• RSVP 응답 및 참석자 정보
+• 방명록 메시지
+• QR 스캔 입장 기록
+• 생성된 QR 코드
+
+이 작업은 되돌릴 수 없습니다.`;
+    
+    if (confirm(confirmMessage)) {
+        try {
+            // 로컬 스토리지 데이터 삭제
+            localStorage.removeItem('rsvpResponse');
+            localStorage.removeItem('attendeeData');
+            localStorage.removeItem('guestbookData');
+            localStorage.removeItem('scannedAttendees');
+            
+            // QR 코드 데이터 삭제
+            if (window.attendeeQRCodes) {
+                window.attendeeQRCodes = {};
+            }
+            
+            // Supabase에서도 삭제 시도 (함수가 존재하는 경우만)
+            if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
+                try {
+                    const supabaseTasks = [];
+                    
+                    // 존재하는 함수들만 호출
+                    if (typeof window.supabaseConfig.clearAllRSVPData === 'function') {
+                        supabaseTasks.push(window.supabaseConfig.clearAllRSVPData());
+                    }
+                    if (typeof window.supabaseConfig.clearAllGuestbookData === 'function') {
+                        supabaseTasks.push(window.supabaseConfig.clearAllGuestbookData());
+                    }
+                    if (typeof window.supabaseConfig.clearAllAttendeeEntries === 'function') {
+                        supabaseTasks.push(window.supabaseConfig.clearAllAttendeeEntries());
+                    }
+                    if (typeof window.supabaseConfig.clearAllQRCodes === 'function') {
+                        supabaseTasks.push(window.supabaseConfig.clearAllQRCodes());
+                    }
+                    
+                    if (supabaseTasks.length > 0) {
+                        Promise.allSettled(supabaseTasks).then(results => {
+                            const failures = results.filter(result => result.status === 'rejected');
+                            if (failures.length > 0) {
+                                console.warn('일부 데이터베이스 삭제 실패:', failures);
+                                showNotification('로컬 데이터는 삭제되었지만 일부 데이터베이스 삭제에 실패했습니다.', 'warning');
+                            } else {
+                                showNotification('모든 참석자 데이터가 완전히 삭제되었습니다.', 'success');
+                            }
+                        });
+                    } else {
+                        console.log('Supabase 삭제 함수들이 구현되지 않음');
+                        showNotification('로컬 데이터가 삭제되었습니다. (데이터베이스 연동 기능 미구현)', 'success');
+                    }
+                } catch (error) {
+                    console.error('Supabase 삭제 중 오류:', error);
+                    showNotification('로컬 데이터는 삭제되었지만 데이터베이스 삭제에 실패했습니다.', 'warning');
+                }
+            } else {
+                showNotification('모든 참석자 데이터가 삭제되었습니다.', 'success');
+            }
+            
+            // UI 새로고침
+            loadAttendeesData();
+            loadAdminGuestbookData();
+            updateAttendeeList();
+            
+        } catch (error) {
+            console.error('참석자 데이터 삭제 실패:', error);
+            showNotification('데이터 삭제 중 오류가 발생했습니다.', 'error');
+        }
     }
 }
 
 // 데이터 내보내기 함수들
 function exportAttendees() {
     showNotification('참석자 데이터를 CSV로 내보냅니다...', 'info');
-    // CSV 내보내기 로직 구현
+    
+    try {
+        const attendees = getLocalAttendeesData();
+        
+        if (attendees.length === 0) {
+            showNotification('내보낼 참석자 데이터가 없습니다.', 'error');
+            return;
+        }
+        
+        // CSV 형식으로 데이터 생성
+        const headers = ['참석자명', '연락처', '이메일', '메시지', '응답상태', '등록일시', '데이터출처'];
+        const csvContent = [
+            // BOM 추가 (한글 깨짐 방지)
+            '\uFEFF',
+            // 헤더
+            headers.join(','),
+            // 데이터
+            ...attendees.map(attendee => [
+                `"${attendee.name || ''}"`,
+                `"${attendee.phone || ''}"`,
+                `"${attendee.email || ''}"`,
+                `"${(attendee.message || '').replace(/"/g, '""')}"`,
+                `"${getResponseText(attendee.response)}"`,
+                `"${formatExcelDate(attendee.created_at || attendee.timestamp)}"`,
+                `"${getSourceText(attendee.source)}"`
+            ].join(','))
+        ].join('\n');
+        
+        // 파일 다운로드
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        
+        const today = new Date().toISOString().split('T')[0];
+        link.download = `참석자데이터_${today}_${attendees.length}명.csv`;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showNotification(`참석자 데이터 (${attendees.length}명)가 CSV 파일로 내보내졌습니다.`, 'success');
+        
+    } catch (error) {
+        console.error('CSV 내보내기 실패:', error);
+        showNotification('CSV 파일 내보내기에 실패했습니다.', 'error');
+    }
 }
 
 function exportGuestbook() {
@@ -846,14 +1825,54 @@ function changeAdminPassword() {
 }
 
 // 방명록 메시지 삭제
-function deleteGuestbookMessage(messageId) {
+async function deleteGuestbookMessage(messageId) {
     if (confirm('이 방명록 메시지를 삭제하시겠습니까?')) {
-        const guestbookData = JSON.parse(localStorage.getItem('guestbookData') || '[]');
-        const filteredData = guestbookData.filter((_, index) => index.toString() !== messageId);
-        localStorage.setItem('guestbookData', JSON.stringify(filteredData));
+        console.log('삭제 시도 - messageId:', messageId, 'type:', typeof messageId);
         
-        loadAdminGuestbookData();
-        showNotification('방명록 메시지가 삭제되었습니다.', 'success');
+        try {
+            const guestbookData = JSON.parse(localStorage.getItem('guestbookData') || '[]');
+            console.log('현재 방명록 데이터:', guestbookData);
+            
+            // messageId를 숫자로 변환하여 인덱스로 사용
+            const indexToDelete = parseInt(messageId);
+            
+            console.log('삭제할 인덱스:', indexToDelete, '방명록 길이:', guestbookData.length);
+            
+            if (isNaN(indexToDelete) || indexToDelete < 0 || indexToDelete >= guestbookData.length) {
+                console.error('잘못된 인덱스:', indexToDelete);
+                showNotification(`삭제할 메시지를 찾을 수 없습니다. (인덱스: ${indexToDelete})`, 'error');
+                return;
+            }
+            
+            // 삭제할 메시지 정보 로그
+            const messageToDelete = guestbookData[indexToDelete];
+            console.log('삭제할 메시지:', messageToDelete);
+            
+            // 해당 인덱스의 메시지 삭제
+            guestbookData.splice(indexToDelete, 1);
+            localStorage.setItem('guestbookData', JSON.stringify(guestbookData));
+            
+            // Supabase에서도 삭제 시도
+            if (typeof window.supabaseConfig !== 'undefined' && window.supabaseConfig.isConnected()) {
+                try {
+                    // Supabase에서는 실제 ID를 사용해야 할 수도 있음
+                    if (messageToDelete.id) {
+                        await window.supabaseConfig.deleteGuestbookMessage(messageToDelete.id);
+                    }
+                    console.log('✅ Supabase에서 방명록 삭제 완료');
+                } catch (error) {
+                    console.warn('Supabase 방명록 삭제 실패:', error);
+                }
+            }
+            
+            // UI 새로고침
+            loadAdminGuestbookData();
+            showNotification('방명록 메시지가 삭제되었습니다.', 'success');
+            
+        } catch (error) {
+            console.error('방명록 삭제 실패:', error);
+            showNotification('방명록 삭제에 실패했습니다.', 'error');
+        }
     }
 }
 

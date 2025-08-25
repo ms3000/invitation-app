@@ -209,6 +209,10 @@
                             <i class="fas fa-download"></i>
                             CSV 내보내기
                         </button>
+                        <button class="btn-clear" onclick="clearAllAttendeeData()">
+                            <i class="fas fa-trash-alt"></i>
+                            전체 삭제
+                        </button>
                     </div>
                 </div>
                 
@@ -429,9 +433,57 @@
                             <i class="fas fa-stop"></i>
                             스캔 중지
                         </button>
+                        <button class="btn-test-qr" onclick="generateTestQRCode()">
+                            <i class="fas fa-vial"></i>
+                            테스트 QR 생성
+                        </button>
                     </div>
                     <div class="scan-results" id="scanResults" style="display: none;">
                         <!-- 스캔 결과가 표시됨 -->
+                    </div>
+                </div>
+
+                <!-- 행사 실 참석자 명단 -->
+                <div class="attendee-list-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-users"></i> 행사 실 참석자 명단</h3>
+                        <div class="attendee-controls">
+                            <button class="btn-export" onclick="downloadAttendeeExcel()">
+                                <i class="fas fa-file-excel"></i>
+                                Excel 다운로드
+                            </button>
+                            <button class="btn-refresh" onclick="updateAttendeeList()">
+                                <i class="fas fa-sync"></i>
+                                새로고침
+                            </button>
+                            <button class="btn-clear" onclick="clearAttendeeList()">
+                                <i class="fas fa-trash"></i>
+                                명단 초기화
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 참석자 통계 -->
+                    <div class="attendee-stats">
+                        <div class="stat-item">
+                            <div class="stat-number">0</div>
+                            <div class="stat-label">총 입장자</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">-</div>
+                            <div class="stat-label">오늘 날짜</div>
+                        </div>
+                    </div>
+
+                    <!-- 참석자 목록 -->
+                    <div class="scanned-attendees-container">
+                        <div id="scannedAttendeesList" class="scanned-attendees-list">
+                            <div class="no-data">
+                                <i class="fas fa-users"></i>
+                                <p>아직 입장 확인된 참석자가 없습니다.</p>
+                                <small>QR 코드를 스캔하면 여기에 표시됩니다.</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -637,7 +689,7 @@
     </script>
     
     <!-- 메인 스크립트 -->
-    <script src="supabase-config.js"></script>
-    <script src="admin.js"></script>
+    <script src="supabase-config.js?v=1.2"></script>
+    <script src="admin.js?v=1.2"></script>
 </body>
 </html>
